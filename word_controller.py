@@ -1,7 +1,6 @@
-import re
 from googletrans import Translator
 import classla
-from transliterate import translit
+from cyrtranslit import to_latin, to_cyrillic
 import csv
 import requests
 
@@ -10,9 +9,17 @@ class WordController:
 
     @staticmethod
     def split_into_words(input_string):
-        words = re.findall(r'\w+(?:-\w+)*|[.,!?;:\'"()]', input_string)
+        doc = WordController.nlp(input_string)
+        
+        words = []
+        
+        for sentence in doc.sentences:
+            for word in sentence.words:
+                words.append(word.text)
+        
         print(words)
         return words
+
 
     @staticmethod
     def translate_words(words):
@@ -39,16 +46,18 @@ class WordController:
 
         return lemmatized_words
     
-    @staticmethod
-    def transliterate_lemmas(lemmas):
-        transliterated_lemmas = []
-        for lemma in lemmas:
-            if lemma.isalpha() and any(c.isascii() for c in lemma):
-                transliterated = translit(lemma, 'sr')
-                transliterated_lemmas.append(transliterated)
-            else:
-                transliterated_lemmas.append(lemma)
-        return transliterated_lemmas
+
+    def transliterate_latin_to_cyrillic(words):
+        cyrillic_words = []
+        for word in words:
+            cyrillic_words.append(to_cyrillic(word, 'sr'))
+        return cyrillic_words
+
+    def transliterate_cyrillic_to_latin(words):
+        latin_words = []
+        for word in words:
+            latin_words.append(to_latin(word, 'sr'))
+        return latin_words
     
     def process_links_for_lemmas(transliterated_lemmas):
         base_url = "http://serbiandictionary.com/translate/"
@@ -92,7 +101,6 @@ class WordController:
 
         return definitions
 
-
     @staticmethod
     def get_word_types(words):
         word_types = []
@@ -108,8 +116,6 @@ class WordController:
         for word in words:
             doc = WordController.nlp(word)
             feats = doc.sentences[0].words[0].feats 
-            
-            print(f"Feats for '{word}':", feats)
             
             if feats:
                 feats_dict = {feat.split('=')[0]: feat.split('=')[1] for feat in feats.split('|')}
@@ -171,8 +177,3 @@ class WordController:
             
             word_genders.append(gender)
         return word_genders
-    
-
-    
-
-

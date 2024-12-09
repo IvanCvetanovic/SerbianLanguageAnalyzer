@@ -139,11 +139,18 @@
         <h1>Text Analyzer for Serbian Language</h1>
     </header>
     <div class="container">
+        {% if error_message %}
+        <div class="alert alert-danger" style="color: red; font-weight: bold;">
+            {{ error_message }}
+        </div>
+        {% endif %}
+    
         <form action="/" method="post">
             <input type="text" name="input" placeholder="Enter something..." />
             <input type="submit" name="submit_button" value="Submit" /> 
             <button type="button" class="random-btn" onclick="fetchRandomSentence()">Random</button>
         </form>
+    
 
         {% if original_input and translated_sentence %}
         <div>

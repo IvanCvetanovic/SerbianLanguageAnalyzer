@@ -10,9 +10,10 @@ class SentenceGenerator:
         "Srpske narodne pripovijetke, 1853.",
         "Srpske narodne pripovijetke, 1870.",
         "Objavljena je 1853.",
-        "Pročitajte originalnu celu priču online!"
+        "Pročitajte originalnu celu priču online!",
+        "Sadrži klasične motive hrabrosti i upornosti kao i druge narodne bajke objavljene u zbirci."
     ]
-    MAX_WORDS = 15  # Max words per sentence
+    MAX_WORDS = 25  # Max words per sentence allowed for random generation.
 
     @staticmethod
     def get_random_sentence(url):
@@ -27,23 +28,16 @@ class SentenceGenerator:
                 return "Content not found on the page."
 
             text = story_div.get_text(separator=' ', strip=True)
-            
             sentences = re.split(r'(?<=[.!?])\s+', text)
-            
             sentences = [s for s in sentences if s and s not in SentenceGenerator.EXCLUDED_SENTENCES]
-
-            # Debugging: Show the sentences being processed
-            print(f"All sentences: {sentences}")
 
             short_sentences = [
                 s for s in sentences if len(re.findall(r'\b\w+\b', s)) <= SentenceGenerator.MAX_WORDS
             ]
-            
-            print(f"Short sentences: {short_sentences}")
 
             if short_sentences:
                 encoded_sentence = random.choice(short_sentences).encode('utf-8')
-                return encoded_sentence.decode('utf-8', 'ignore')  # Ignore any decoding errors
+                return encoded_sentence.decode('utf-8', 'ignore')  # Ignore annoying decoding errors
             else:
                 return "No suitable sentence found."
         

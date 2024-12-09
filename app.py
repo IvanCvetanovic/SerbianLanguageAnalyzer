@@ -10,7 +10,6 @@ app = Flask(__name__)
 
 text_analyzer = TextAnalyzer()
 
-# Serve PyVis static files (utils.js) from the PyVis package
 pyvis_path = os.path.join(os.path.dirname(__file__), ".venv/Lib/site-packages/pyvis")
 app.add_url_rule(
     '/lib/<path:filename>',
@@ -37,18 +36,26 @@ def home():
     definitions = []
 
     if request.method == "POST":
-        input_string = request.form["input"]
+        input_string = request.form["input"].strip()  # Remove extra spaces
         original_input = input_string
+
+        # Validate input
+        if not input_string:
+            return render_template(
+                "index.html",
+                error_message="Input cannot be empty!",
+                words=words,
+                lemmas=lemmas,
+            )
 
         translated_sentence = WordController.translate_sentence(input_string)
         words = WordController.split_into_words(input_string)
+        words = WordController.transliterate_cyrillic_to_latin(words)
 
         lemmas = WordController.lemmatize_words(words)
         
-        # Call transliteration function
-        transliterated_lemmas = WordController.transliterate_lemmas(lemmas)
+        transliterated_lemmas = WordController.transliterate_latin_to_cyrillic(lemmas)
         
-        # Find definitions locally
         definitions = WordController.find_local_definitions(transliterated_lemmas)
 
         online_definitions = WordController.process_links_for_lemmas(transliterated_lemmas)
@@ -67,16 +74,14 @@ def home():
         word_heads = [dp["head"] for dp in dp_results]
         word_deprels = [dp["deprel"] for dp in dp_results]
 
-        # Generate the new dependency tree image using PyVis
         dependency_tree_img = text_analyzer.visualize_dependency_tree(input_string)
 
-        # Prepare zipped data with "Local Definition" column
         zipped_data = zip(
-            [translation[1] for translation in translations],  # Translation
-            lemmas,  # Lemma (Base Form)
-            definitions,  # Local Definition
-            online_definitions,  # Online Definition
-            word_types,  # Word Type
+            [translation[1] for translation in translations],
+            lemmas,
+            definitions,
+            online_definitions,
+            word_types, 
             word_numbers,
             word_persons,
             word_cases,
@@ -92,7 +97,7 @@ def home():
             original_input=original_input,
             translated_sentence=translated_sentence,
             ner_results=ner_results,
-            dependency_tree_img=dependency_tree_img,  # Pass PyVis graph to the template
+            dependency_tree_img=dependency_tree_img,
             zip=zip,
             online_definitions=online_definitions
         )
