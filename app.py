@@ -5,6 +5,7 @@ from fairy_tales import FairyTale
 import os
 import random
 from text_analyzer import TextAnalyzer  
+import classla
 
 app = Flask(__name__)
 

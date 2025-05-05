@@ -1,11 +1,11 @@
 from googletrans import Translator
-import classla
 from cyrtranslit import to_latin, to_cyrillic
 import csv
 import requests
+from pipeline import nlp
 
 class WordController:
-    nlp = classla.Pipeline(lang='sr', processors='tokenize,pos,lemma')
+    nlp = nlp
 
     @staticmethod
     def split_into_words(input_string):
@@ -34,7 +34,8 @@ class WordController:
     @staticmethod
     def translate_sentence(sentence):
         translator = Translator()
-        return translator.translate(sentence, src="sr", dest="en").text
+        translation = translator.translate(sentence, src="sr", dest="en")
+        return translation.text
 
     @staticmethod
     def lemmatize_words(words):

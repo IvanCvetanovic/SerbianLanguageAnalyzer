@@ -13,7 +13,7 @@ class SentenceGenerator:
         "Pročitajte originalnu celu priču online!",
         "Sadrži klasične motive hrabrosti i upornosti kao i druge narodne bajke objavljene u zbirci."
     ]
-    MAX_WORDS = 25  # Max words per sentence allowed for random generation.
+    MAX_WORDS = 15  # Max words per sentence allowed for random generation.
 
     @staticmethod
     def get_random_sentence(url):

@@ -1,9 +1,9 @@
-import classla
+from pipeline import nlp
 from pyvis.network import Network
 
 class TextAnalyzer:
     def __init__(self):
-        self.pipeline = classla.Pipeline(lang='sr', processors='tokenize,pos,lemma,ner,depparse')
+        self.pipeline = nlp
 
     def analyze_named_entities(self, text):
         doc = self.pipeline(text)
