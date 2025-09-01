@@ -1,4 +1,3 @@
-from googletrans import Translator
 from cyrtranslit import to_latin, to_cyrillic
 import csv
 import requests
@@ -22,8 +21,7 @@ class WordController:
 
 
     @staticmethod
-    def translate_words(words):
-        translator = Translator()
+    def translate_words(words, translator):
         translations = []
         for word in words:
             translated_word = translator.translate(word, src="sr", dest="en").text
@@ -32,8 +30,7 @@ class WordController:
         return translations
     
     @staticmethod
-    def translate_sentence(sentence):
-        translator = Translator()
+    def translate_sentence(sentence, translator):
         translation = translator.translate(sentence, src="sr", dest="en")
         return translation.text
 
