@@ -22,7 +22,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 translator = Translator()
-transcriber = VoiceTranscriber(model_size="small")
+transcriber = VoiceTranscriber(model_size="medium")
 text_analyzer = TextAnalyzer()
 visualizer = Visualizer()
 

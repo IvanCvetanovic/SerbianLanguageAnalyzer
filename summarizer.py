@@ -38,9 +38,21 @@ def transliterate_to_latin(text: str) -> str:
     return _cyr_pattern.sub(lambda m: _CYR_TO_LAT[m.group(0)], text)
 
 def split_sentences(text: str) -> list[str]:
-    pattern = r'(?<=[\.\?\!])\s+'
-    sents = re.split(pattern, text.strip())
-    return [s for s in sents if s]
+    if not text:
+        return []
+
+    abbr = ["dr.", "mr.", "mrs.", "g.", "prof.", "itd.", "npr.", "str.", "br.", "ul."]
+    PH = "§DOT§"
+    tmp = text
+    for a in abbr:
+        tmp = tmp.replace(a, a.replace(".", PH))
+
+    pattern = r'(?<=[\.!?])\s+(?=(?:[A-ZŠĐČĆŽ]|[А-ЯЉЊЏЋЂ]))'
+    parts = re.split(pattern, tmp.strip())
+
+    sents = [p.replace(PH, ".").strip() for p in parts if p.strip()]
+    return sents
+
 
 def build_similarity_matrix(sentences: list[str]) -> np.ndarray:
     vec = TfidfVectorizer()
