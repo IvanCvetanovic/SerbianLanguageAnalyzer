@@ -34,7 +34,7 @@ def get_topics(
     translator,
     n_topics: int = 1,
     n_top_words: int = 8,
-    stopwords_csv: str = "SSWdictionary.csv",
+    stopwords_csv: str = "C:\\Users\\PrOfSeS\\Desktop\\Master Thesis Project\\data\\SSWdictionary.csv",
     translate: bool = True
 ) -> list[list[str]]:
     sr_stop = load_serbian_stopwords(stopwords_csv)

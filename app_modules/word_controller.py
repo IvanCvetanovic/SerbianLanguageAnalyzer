@@ -1,7 +1,7 @@
 from cyrtranslit import to_latin, to_cyrillic
 import csv
 import requests
-from pipeline import nlp
+from app_modules.pipeline import nlp
 
 class WordController:
     nlp = nlp
@@ -75,7 +75,7 @@ class WordController:
         return results
 
     @staticmethod
-    def find_local_definitions(transliterated_lemmas, csv_file_path="Serbian-Wordnet.csv"):
+    def find_local_definitions(transliterated_lemmas, csv_file_path="C:\\Users\\PrOfSeS\\Desktop\\Master Thesis Project\\data\\Serbian-Wordnet.csv"):
         definitions = []
 
         with open(csv_file_path, mode='r', encoding='utf-8') as file:

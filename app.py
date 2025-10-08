@@ -5,14 +5,15 @@ import collections
 from googletrans import Translator
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
-from summarizer import extractive_summary, abstractive_summary
-from topic_modeller import get_topics
-from word_controller import WordController
-from sentence_generator import SentenceGenerator
-from fairy_tales import FairyTale
-from text_analyzer import TextAnalyzer
-from speech_to_text import VoiceTranscriber
-from graph_maker import Visualizer
+from app_modules.summarizer import extractive_summary, abstractive_summary
+from app_modules.topic_modeller import get_topics
+from app_modules.word_controller import WordController
+from app_modules.sentence_generator import SentenceGenerator
+from app_modules.fairy_tales import FairyTale
+from app_modules.text_analyzer import TextAnalyzer
+from app_modules.speech_to_text import VoiceTranscriber
+from app_modules.graph_maker import Visualizer
+
 
 app = Flask(__name__)
 

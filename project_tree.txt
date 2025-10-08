@@ -1,0 +1,22 @@
+Master Thesis Project
+├── Documentation
+│   └── Praktikum 1 - Report.pdf
+├── templates
+│   └── index.html
+├── uploads
+├── .gitignore
+├── app.py
+├── fairy_tales.py
+├── graph_maker.py
+├── pipeline.py
+├── README.md
+├── requirements.txt
+├── sentence_generator.py
+├── Serbian-Wordnet.csv
+├── speech_to_text.py
+├── SSWdictionary.csv
+├── summarizer.py
+├── text_analyzer.py
+├── topic_modeller.py
+├── tree.py
+└── word_controller.py

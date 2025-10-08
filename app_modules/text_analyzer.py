@@ -1,4 +1,4 @@
-from pipeline import nlp
+from app_modules.pipeline import nlp
 from pyvis.network import Network
 
 class TextAnalyzer:
