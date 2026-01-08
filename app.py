@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from app_modules.local_translator import LocalSrToEnTranslator
-
+from app_modules.sentiment_analyzer import SerbianSentimentAnalyzer
 from app_modules.summarizer import extractive_summary, abstractive_summary
 from app_modules.topic_modeller import get_topics
 from app_modules.word_controller import WordController
@@ -32,10 +32,11 @@ pyvis_path = Path(pyvis.__file__).resolve().parent
 def pyvis_static(filename):
     return send_from_directory(pyvis_path / 'lib', filename)
 
-translator     = LocalSrToEnTranslator()
-transcriber    = VoiceTranscriber(model_size="medium")
-text_analyzer  = TextAnalyzer()
-visualizer     = Visualizer()
+translator          = LocalSrToEnTranslator()
+transcriber         = VoiceTranscriber(model_size="medium")
+text_analyzer       = TextAnalyzer()
+visualizer          = Visualizer()
+sentiment_analyzer  = SerbianSentimentAnalyzer()
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -63,7 +64,9 @@ def run_analysis(input_text, features, job_id: str):
         "pos_sunburst_image": None,
         "dependency_tree_img": None,
         "ner_results": [],
-        "error_message": None
+        "error_message": None,
+        "sentiment": None,
+        "sentence_sentiments": []
     }
 
     MAX_LINK_LOOKUPS = 40
@@ -118,6 +121,35 @@ def run_analysis(input_text, features, job_id: str):
         except Exception:
             word_heads   = [SAFE_DEFAULT] * len(lemmas)
             word_deprels = [SAFE_DEFAULT] * len(lemmas)
+
+        _report(job_id, 60, "Sentiment analysis")
+        try:
+            analysis = sentiment_analyzer.analyze(
+                input_text,
+                mode="sentences",
+                aggregation="mean",
+                max_length=256,
+            )
+            result["sentiment"] = {
+                "label": analysis.overall.label,
+                "confidence": analysis.overall.confidence,
+                "scores": analysis.overall.scores,
+            }
+
+            sentences = sentiment_analyzer.split_sentences(input_text)
+            result["sentence_sentiments"] = [
+                {
+                    "sentence": s,
+                    "label": r.label,
+                    "confidence": r.confidence,
+                    "scores": r.scores,
+                }
+                for s, r in zip(sentences, analysis.sentences)
+            ]
+        except Exception:
+            result["sentiment"] = None
+            result["sentence_sentiments"] = []
+
 
         _report(job_id, 62, "Translating lemmas")
         translation_map = {lemma: SAFE_DEFAULT for lemma in unique_lemmas}
@@ -228,7 +260,9 @@ def home():
         "word_cloud_image": None,
         "ner_heatmap_image": None,
         "pos_sunburst_image": None,
-        "error_message": None
+        "error_message": None,
+        "sentiment": None,
+        "sentence_sentiments": []
     }
 
     if request.method == "POST":
