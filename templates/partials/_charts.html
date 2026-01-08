@@ -1,0 +1,27 @@
+{% if word_cloud_image %}
+  <div class="chart-container">
+    <h2>Word Cloud</h2>
+    <img src="data:image/png;base64, {{ word_cloud_image }}" alt="Word Cloud">
+  </div>
+{% endif %}
+
+{% if ner_heatmap_image %}
+  <div class="chart-container">
+    <h2>NER Heatmap</h2>
+    <img src="data:image/png;base64, {{ ner_heatmap_image }}" alt="NER Heatmap">
+  </div>
+{% endif %}
+
+{% if pos_sunburst_image %}
+  <div class="chart-container">
+    <h2>POS Sunburst Chart</h2>
+    <img src="data:image/png;base64, {{ pos_sunburst_image }}" alt="POS Sunburst Chart">
+  </div>
+{% endif %}
+
+{% if dependency_tree_img %}
+  <div class="chart-container">
+    <h2>Dependency Tree</h2>
+    <div>{{ dependency_tree_img | safe }}</div>
+  </div>
+{% endif %}

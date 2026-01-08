@@ -1,0 +1,90 @@
+{% if original_input %}
+  <div>
+    <h2 style="margin-top:20px;">Original Input:</h2>
+    <p>{{ original_input }}</p>
+    {% if translated_sentence %}
+      <h2>Translated Input:</h2>
+      <p>{{ translated_sentence }}</p>
+    {% endif %}
+  </div>
+
+  {% if extractive_summary %}
+    <div class="summary">
+      <h2>Extractive Summary</h2>
+      <ul>
+        {% for sent in extractive_summary %}
+          <li>{{ sent }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if abstractive_summary %}
+    <div class="summary">
+      <h2>Abstractive Summary</h2>
+      <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
+      <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
+    </div>
+  {% endif %}
+
+  {% if topics %}
+    <div class="summary">
+      <h2>Topic Modelling</h2>
+      <ul>
+        {% for term in topics[0] %}
+          <li>{{ term }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if words %}
+    <table>
+      <thead>
+        <tr>
+          <th>Original Word</th>
+          <th>Translation</th>
+          <th>Lemma (Base Form)</th>
+          <th>Local Definition</th>
+          <th>Online Definition</th>
+          <th>Word Type</th>
+          <th>Number</th>
+          <th>Person</th>
+          <th>Case</th>
+          <th>Gender</th>
+          <th>Head</th>
+          <th>Dependency Relation</th>
+          <th>Named Entity</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for word, lemma_data in zip(words, zipped_data) %}
+        <tr>
+          <td>{{ word }}</td>
+          <td>{{ lemma_data[0] }}</td>
+          <td>{{ lemma_data[1] }}</td>
+          <td>{{ lemma_data[2] }}</td>
+          <td>
+            {% if lemma_data[3] != "/" %}
+              <a href="{{ lemma_data[3] }}" target="_blank">{{ lemma_data[3] }}</a>
+            {% else %}
+              {{ lemma_data[3] }}
+            {% endif %}
+          </td>
+          <td>{{ lemma_data[4] }}</td>
+          <td>{{ lemma_data[5] }}</td>
+          <td>{{ lemma_data[6] }}</td>
+          <td>{{ lemma_data[7] }}</td>
+          <td>{{ lemma_data[8] }}</td>
+          <td>{{ lemma_data[9] }}</td>
+          <td>{{ lemma_data[10] }}</td>
+          <td>
+            {% set entity = ner_results | selectattr("text", "equalto", word) | map(attribute="entity") | list %}
+            {{ entity[0] if entity else "O" }}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endif %}

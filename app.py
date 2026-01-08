@@ -19,51 +19,34 @@ from app_modules.graph_maker import Visualizer
 
 import pyvis
 
-
-# -----------------------------
-# App setup
-# -----------------------------
 BASE_DIR = Path(__file__).resolve().parent
-app = Flask(__name__)
-app.jinja_env.globals.update(zip=zip)  # allow zip() in templates
+app = Flask(__name__, template_folder="templates", static_folder="static")
+app.jinja_env.globals.update(zip=zip) 
 
 UPLOAD_FOLDER = BASE_DIR / 'uploads'
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 
-# Serve pyvis static assets (for dependency tree HTML)
 pyvis_path = Path(pyvis.__file__).resolve().parent
 @app.route('/lib/<path:filename>')
 def pyvis_static(filename):
     return send_from_directory(pyvis_path / 'lib', filename)
 
-
-# -----------------------------
-# Heavy objects
-# -----------------------------
 translator     = LocalSrToEnTranslator()
 transcriber    = VoiceTranscriber(model_size="medium")
 text_analyzer  = TextAnalyzer()
 visualizer     = Visualizer()
 
-# -----------------------------
-# Async infra + progress
-# -----------------------------
 executor = ThreadPoolExecutor(max_workers=2)
 
-# job bookkeeping
-jobs = {}       # job_id -> dict
-progress = {}   # job_id -> {"pct": int, "stage": str, "status": "running|finished|failed"}
+jobs = {}
+progress = {}
 
 def _report(job_id: str, pct: int, stage: str):
     info = progress.get(job_id, {})
     info.update({"pct": int(pct), "stage": stage})
     progress[job_id] = info
 
-
-# -----------------------------
-# Core analysis (with progress)
-# -----------------------------
 def run_analysis(input_text, features, job_id: str):
     progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running"}
 
@@ -229,10 +212,6 @@ def run_analysis(input_text, features, job_id: str):
         })
         return result
 
-
-# -----------------------------
-# Routes
-# -----------------------------
 @app.route("/", methods=["GET", "POST"])
 def home():
     view_data = {
@@ -255,7 +234,6 @@ def home():
     if request.method == "POST":
         selected_features = request.form.getlist("features")
 
-        # Always async to enable progress bar
         input_string = ""
         if 'audio_file' in request.files and request.files['audio_file'].filename != '':
             file = request.files['audio_file']
@@ -350,7 +328,6 @@ def analyze_voice():
             tmp_path.unlink(missing_ok=True)
         except Exception:
             pass
-
 
 if __name__ == "__main__":
     app.run(debug=False)
