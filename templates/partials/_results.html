@@ -9,6 +9,55 @@
     {% endif %}
   </div>
 
+  {% if hate_speech %}
+    <div class="summary">
+      <h2>Hate / Abuse Detection</h2>
+
+      {% if hate_speech.overall %}
+        <p>
+          <strong>Status:</strong>
+          {% if hate_speech.overall.flagged %}
+            <span style="color:#b00020;">🚩 Abusive / Problematic</span>
+          {% else %}
+            <span style="color:#2e7d32;">✅ Not Abusive</span>
+          {% endif %}
+        </p>
+
+        <p>
+          <strong>Top label:</strong>
+          {{ hate_speech.overall.label }}
+          ({{ "%.3f"|format(hate_speech.overall.score) }})
+        </p>
+
+        <ul>
+          {% for lbl, score in hate_speech.overall.scores.items() %}
+            <li>{{ lbl }}: {{ "%.3f"|format(score) }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if hate_speech.sentences %}
+        <h3 style="margin-top:15px;">Sentence-level</h3>
+        <ul>
+          {% for item in hate_speech.sentences %}
+            <li style="margin-bottom:12px;">
+              <div><strong>Sentence:</strong> {{ item.sentence }}</div>
+              <div>
+                <strong>{{ item.label }}</strong>
+                ({{ "%.3f"|format(item.score) }})
+                {% if item.flagged %}
+                  <span style="color:#b00020;">🚩</span>
+                {% else %}
+                  <span style="color:#2e7d32;">✅</span>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endif %}
+
   {% if sentiment or sentence_sentiments %}
     <div class="summary">
       <h2>Sentiment</h2>

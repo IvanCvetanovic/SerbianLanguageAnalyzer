@@ -16,6 +16,7 @@ from app_modules.fairy_tales import FairyTale
 from app_modules.text_analyzer import TextAnalyzer
 from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.graph_maker import Visualizer
+from app_modules.hate_speech_detector import analyze_hate_speech
 
 import pyvis
 
@@ -66,7 +67,8 @@ def run_analysis(input_text, features, job_id: str):
         "ner_results": [],
         "error_message": None,
         "sentiment": None,
-        "sentence_sentiments": []
+        "sentence_sentiments": [],
+        "hate_speech": None
     }
 
     MAX_LINK_LOOKUPS = 40
@@ -150,6 +152,35 @@ def run_analysis(input_text, features, job_id: str):
             result["sentiment"] = None
             result["sentence_sentiments"] = []
 
+        _report(job_id, 66, "Hate speech detection")
+        try:
+            raw_overall = analyze_hate_speech(input_text)
+
+            overall_hate = {
+                "flagged": raw_overall["flagged"],
+                "label": raw_overall["label"],
+                "score": raw_overall["score"],
+                "scores": raw_overall["scores"],
+                "reasons": raw_overall["reasons"],
+            }
+
+            sentences = sentiment_analyzer.split_sentences(input_text)
+            sentence_hate = []
+            for s in sentences:
+                raw = analyze_hate_speech(s)
+                sentence_hate.append({
+                    "sentence": s,
+                    "flagged": raw["flagged"],
+                    "label": raw["label"],
+                    "score": raw["score"],
+                })
+
+            result["hate_speech"] = {
+                "overall": overall_hate,
+                "sentences": sentence_hate
+            }
+        except Exception:
+            result["hate_speech"] = None
 
         _report(job_id, 62, "Translating lemmas")
         translation_map = {lemma: SAFE_DEFAULT for lemma in unique_lemmas}
