@@ -1,397 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text Analyzer</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body, html {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
-        }
-        main {
-            flex: 1;
-        }
-        header {
-            text-align: center;
-            padding: 20px;
-            background-color: #f4f4f4;
-            width: 100%;
-            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .container {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            max-width: 1500px;
-            margin: 0 auto;
-        }
-        form {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        input[type="text"] {
-            padding: 10px;
-            font-size: 16px;
-            width: 600px;
-            border: 1px solid #ccc;
-            border-radius: 5px 0 0 5px;
-            margin-right: -1px;
-        }
-        input[type="submit"],
-        button,
-        input[type="file"] {
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-        }
-        input[type="submit"],
-        button.random-btn,
-        button.icon-btn {
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-            color: white;
-            line-height: 1.5;
-        }
-        input[type="submit"].text-submit {
-            border-radius: 0;
-            background-color: #2c38dd;
-        }
-        input[type="submit"].file-submit {
-            border-radius: 0 5px 5px 0;
-            background-color: #6c757d;
-        }
-        button.random-btn {
-            border-radius: 0;
-            background-color: #FF5733;
-            margin-left: -1px;
-        }
-        button.icon-btn {
-            background-color: #58b0fd;
-            margin-left: -1px;
-            padding: 10px 15px;
-            border-radius: 0 5px 5px 0;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            border: 1px solid black;
-        }
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid black;
-        }
-        tbody tr:nth-child(even) {
-            background-color: #fffceb;
-        }
-        .summary {
-            width: 80%;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 6px;
-        }
-        .summary h2 {
-            margin-bottom: 10px;
-        }
-        .summary ul {
-            list-style-type: disc;
-            margin-left: 20px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Text Analyzer</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body, html { height:100%; font-family: Arial, sans-serif; display:flex; flex-direction:column; background:#ffffff; }
+    header { text-align:center; padding:20px; background:#f4f4f4; width:100%; box-shadow:0 2px 5px rgba(0,0,0,.1); }
+    .container { display:flex; flex-direction:column; flex:1; align-items:center; width:100%; max-width:1500px; margin:0 auto; padding-bottom:40px; }
+    form { display:flex; align-items:center; gap:8px; margin:20px 0; flex-wrap:wrap; justify-content:center; }
+    input[type="text"] { padding:10px; font-size:16px; width:600px; max-width:90vw; border:1px solid #ccc; border-radius:5px; }
+    input[type="submit"], button, input[type="file"] { font-size:16px; }
+    input[type="submit"].text-submit,
+    input[type="submit"].file-submit,
+    button.random-btn, button.icon-btn {
+      padding:10px 20px; border:none; cursor:pointer; color:#fff; line-height:1.5; border-radius:5px;
+    }
+    input[type="submit"].text-submit { background:#2c38dd; }
+    input[type="submit"].file-submit { background:#6c757d; }
+    button.random-btn { background:#FF5733; }
+    button.icon-btn { background:#58b0fd; padding:10px 15px; }
+    .feature-options { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .feature-options label { font-size:14px; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; border:1px solid black; }
+    th { background:#4CAF50; color:#fff; }
+    th, td { padding:10px; text-align:left; border:1px solid black; }
+    tbody tr:nth-child(even) { background:#fffceb; }
+    .summary { width:80%; max-width:1000px; margin:30px 0; padding:20px; background:#f9f9f9; border-radius:6px; }
+    .summary h2 { margin-bottom:10px; }
+    .summary ul { list-style:disc; margin-left:20px; }
+    .chart-container { width:80%; max-width:1000px; margin:30px 0; padding:20px; background:#f9f9f9; border-radius:6px; text-align:center; }
+    .chart-container h2 { margin-bottom:15px; }
+    .chart-container img { max-width:100%; height:auto; }
+    .alert { margin-top:15px; color:red; font-weight:bold; }
 
-        #loader-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            z-index: 1000;
-        }
-        .loader-spinner {
-            border: 8px solid #f3f3f3;
-            border-top: 8px solid #3498db;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1.5s linear infinite;
-            margin-bottom: 20px;
-        }
-        #loader-overlay p {
-            font-size: 1.2em;
-            color: #333;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .chart-container {
-            width: 80%;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 6px;
-            text-align: center;
-        }
-        .chart-container h2 {
-            margin-bottom: 15px;
-        }
-        .chart-container img {
-            max-width: 100%;
-            height: auto;
-        }
-    </style>
+    /* Loader & progress */
+    #loader-overlay {
+      position:fixed; inset:0; background:rgba(255,255,255,.9);
+      display:none; justify-content:center; align-items:center; flex-direction:column; z-index:1000;
+      text-align:center; padding:20px;
+    }
+    .loader-spinner { border:8px solid #f3f3f3; border-top:8px solid #3498db; border-radius:50%; width:60px; height:60px; animation:spin 1.2s linear infinite; margin-bottom:14px; }
+    @keyframes spin { to { transform: rotate(360deg);} }
+    #loader-stage { font-size:1.1em; color:#333; margin-bottom:8px; }
+    .progress { width:320px; max-width:80vw; height:10px; background:#e9ecef; border-radius:6px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.05); }
+    .progress-bar { height:100%; width:0%; background:#2c38dd; transition: width .2s linear; }
+    #finished-note { margin-top:10px; color:#2e7d32; display:none; }
+    #failed-note { margin-top:10px; color:#c62828; display:none; }
+  </style>
 </head>
 <body>
-    <div id="loader-overlay">
-        <div class="loader-spinner"></div>
-        <p>Processing, please wait...</p>
+
+  {% if job_id %}
+    <script>window.currentJobId = "{{ job_id }}";</script>
+  {% endif %}
+
+  <!-- Progress overlay -->
+  <div id="loader-overlay" aria-live="polite" aria-busy="true">
+    <div class="loader-spinner" aria-hidden="true"></div>
+    <div id="loader-stage">Queued…</div>
+    <div class="progress" aria-hidden="true">
+      <div class="progress-bar" id="progress-bar"></div>
     </div>
+    <div id="finished-note">Finished. Showing results…</div>
+    <div id="failed-note">Analysis failed. Please try again.</div>
+  </div>
 
-    <header>
-        <h1>Text Analyzer for Serbian Language</h1>
-    </header>
-    <div class="container">
-        {% if error_message %}
-        <div class="alert alert-danger" style="color: red; font-weight: bold;">
-            {{ error_message }}
+  <header>
+    <h1>Text Analyzer for Serbian Language</h1>
+  </header>
+
+  <div class="container">
+    {% if error_message %}
+      <div class="alert">{{ error_message }}</div>
+    {% endif %}
+
+    <!-- Text form (always async on server side) -->
+    <form action="/" method="post">
+      <input type="text" name="input" placeholder="Enter text..." />
+      <input type="submit" class="text-submit" name="submit_button" value="Analyze Text" />
+      <button type="button" class="random-btn" onclick="fetchRandomSentence()">Random</button>
+      <button type="button" class="icon-btn" id="mic-btn" title="Analyze with microphone">🎤</button>
+
+      <div class="feature-options">
+        <label><input type="checkbox" name="features" value="translation" checked> Translation</label>
+        <label><input type="checkbox" name="features" value="summaries" checked> Summaries</label>
+        <label><input type="checkbox" name="features" value="topic" checked> Topic Modelling</label>
+        <label><input type="checkbox" name="features" value="visuals" checked> Visualizations</label>
+        <label><input type="checkbox" name="features" value="graphs" checked> Graphs / Tree</label>
+      </div>
+    </form>
+
+    <!-- Audio form -->
+    <form action="/" method="post" enctype="multipart/form-data">
+      <label for="audio_file">Or upload an audio file:</label>
+      <input type="file" name="audio_file" accept="audio/*" />
+      <input type="submit" class="file-submit" name="submit_button" value="Analyze File" />
+    </form>
+
+    {% if original_input %}
+      <div>
+        <h2 style="margin-top:20px;">Original Input:</h2>
+        <p>{{ original_input }}</p>
+        {% if translated_sentence %}
+          <h2>Translated Input:</h2>
+          <p>{{ translated_sentence }}</p>
+        {% endif %}
+      </div>
+
+      {% if extractive_summary %}
+        <div class="summary">
+          <h2>Extractive Summary</h2>
+          <ul>
+            {% for sent in extractive_summary %}
+              <li>{{ sent }}</li>
+            {% endfor %}
+          </ul>
         </div>
-        {% endif %}
-    
-        <form action="/" method="post">
-            <input type="text" name="input" placeholder="Enter text..." />
-            <input type="submit" class="text-submit" name="submit_button" value="Analyze Text" /> 
-            <button type="button" class="random-btn" onclick="fetchRandomSentence()">Random</button>
-            <button type="button" class="icon-btn" id="mic-btn" title="Analyze with microphone">🎤</button>
-        </form>
+      {% endif %}
 
-        <form action="/" method="post" enctype="multipart/form-data">
-            <label for="audio_file">Or upload an audio file:</label>
-            <input type="file" name="audio_file" accept="audio/*" style="margin-left: 10px;" />
-            <input type="submit" class="file-submit" name="submit_button" value="Analyze File" />
-        </form>
-    
-        {% if original_input %}
-            <div>
-                <h2 style="margin-top: 20px;">Original Input:</h2>
-                <p>{{ original_input }}</p>
-                <h2>Translated Input:</h2>
-                <p>{{ translated_sentence }}</p>
-            </div>
-
-            {% if extractive_summary %}
-            <div class="summary">
-                <h2>Extractive Summary</h2>
-                <ul>
-                {% for sent in extractive_summary %}
-                    <li>{{ sent }}</li>
-                {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if abstractive_summary %}
-            <div class="summary">
-                <h2>Abstractive Summary</h2>
-                <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
-                <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
-            </div>
-            {% endif %}
-
-            {% if topics %}
-            <div class="summary">
-                <h2>Topic Modelling</h2>
-                <ul>
-                {% for term in topics[0] %}
-                    <li>{{ term }}</li>
-                {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if words %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Original Word</th>
-                        <th>Translation</th>
-                        <th>Lemma (Base Form)</th>
-                        <th>Local Definition</th>
-                        <th>Online Definition</th>
-                        <th>Word Type</th>
-                        <th>Number</th>
-                        <th>Person</th>
-                        <th>Case</th>
-                        <th>Gender</th>
-                        <th>Head</th>
-                        <th>Dependency Relation</th>
-                        <th>Named Entity</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for word, lemma_data in zip(words, zipped_data) %}
-                    <tr>
-                        <td>{{ word }}</td>
-                        <td>{{ lemma_data[0] }}</td>
-                        <td>{{ lemma_data[1] }}</td>
-                        <td>{{ lemma_data[2] }}</td>
-                        <td>
-                            {% if lemma_data[3] != "/" %}
-                                <a href="{{ lemma_data[3] }}" target="_blank">{{ lemma_data[3] }}</a>
-                            {% else %}
-                                {{ lemma_data[3] }}
-                            {% endif %}
-                        </td>  
-                        <td>{{ lemma_data[4] }}</td>
-                        <td>{{ lemma_data[5] }}</td>
-                        <td>{{ lemma_data[6] }}</td>
-                        <td>{{ lemma_data[7] }}</td>
-                        <td>{{ lemma_data[8] }}</td>
-                        <td>{{ lemma_data[9] }}</td>
-                        <td>{{ lemma_data[10] }}</td>
-                        <td>
-                            {% set entity = ner_results | selectattr("text", "equalto", word) | map(attribute="entity") | list %}
-                            {{ entity[0] if entity else "O" }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% endif %}
-        {% endif %}
-
-        {% if word_cloud_image %}
-        <div class="chart-container">
-            <h2>Word Cloud</h2>
-            <img src="data:image/png;base64, {{ word_cloud_image }}" alt="Word Cloud">
+      {% if abstractive_summary %}
+        <div class="summary">
+          <h2>Abstractive Summary</h2>
+          <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
+          <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
         </div>
-        {% endif %}
+      {% endif %}
 
-        {% if ner_heatmap_image %}
-        <div class="chart-container">
-            <h2>NER Heatmap</h2>
-            <img src="data:image/png;base64, {{ ner_heatmap_image }}" alt="NER Heatmap">
+      {% if topics %}
+        <div class="summary">
+          <h2>Topic Modelling</h2>
+          <ul>
+            {% for term in topics[0] %}
+              <li>{{ term }}</li>
+            {% endfor %}
+          </ul>
         </div>
-        {% endif %}
+      {% endif %}
 
-        {% if pos_sunburst_image %}
-        <div class="chart-container">
-            <h2>POS Sunburst Chart</h2>
-            <img src="data:image/png;base64, {{ pos_sunburst_image }}" alt="POS Sunburst Chart">
-        </div>
-        {% endif %}
+      {% if words %}
+        <table>
+          <thead>
+            <tr>
+              <th>Original Word</th>
+              <th>Translation</th>
+              <th>Lemma (Base Form)</th>
+              <th>Local Definition</th>
+              <th>Online Definition</th>
+              <th>Word Type</th>
+              <th>Number</th>
+              <th>Person</th>
+              <th>Case</th>
+              <th>Gender</th>
+              <th>Head</th>
+              <th>Dependency Relation</th>
+              <th>Named Entity</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for word, lemma_data in zip(words, zipped_data) %}
+            <tr>
+              <td>{{ word }}</td>
+              <td>{{ lemma_data[0] }}</td>
+              <td>{{ lemma_data[1] }}</td>
+              <td>{{ lemma_data[2] }}</td>
+              <td>
+                {% if lemma_data[3] != "/" %}
+                  <a href="{{ lemma_data[3] }}" target="_blank">{{ lemma_data[3] }}</a>
+                {% else %}
+                  {{ lemma_data[3] }}
+                {% endif %}
+              </td>
+              <td>{{ lemma_data[4] }}</td>
+              <td>{{ lemma_data[5] }}</td>
+              <td>{{ lemma_data[6] }}</td>
+              <td>{{ lemma_data[7] }}</td>
+              <td>{{ lemma_data[8] }}</td>
+              <td>{{ lemma_data[9] }}</td>
+              <td>{{ lemma_data[10] }}</td>
+              <td>
+                {% set entity = ner_results | selectattr("text", "equalto", word) | map(attribute="entity") | list %}
+                {{ entity[0] if entity else "O" }}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    {% endif %}
 
-        {% if dependency_tree_img %}
-        <div class="chart-container">
-            <h2>Dependency Tree</h2>
-            <div>{{ dependency_tree_img | safe }}</div>
-        </div>
-        {% endif %}
-    </div>
+    {% if word_cloud_image %}
+      <div class="chart-container">
+        <h2>Word Cloud</h2>
+        <img src="data:image/png;base64, {{ word_cloud_image }}" alt="Word Cloud">
+      </div>
+    {% endif %}
 
-    <script>
-        const textInput = document.querySelector('input[name="input"]');
-        const mainForm = document.querySelector('form');
+    {% if ner_heatmap_image %}
+      <div class="chart-container">
+        <h2>NER Heatmap</h2>
+        <img src="data:image/png;base64, {{ ner_heatmap_image }}" alt="NER Heatmap">
+      </div>
+    {% endif %}
 
-        function fetchRandomSentence() {
-            fetch('/get_random_sentence')
-                .then(response => response.json())
-                .then(data => {
-                    textInput.value = data.sentence;
-                    mainForm.submit();
-                })
-                .catch(error => console.error('Error fetching random sentence:', error));
+    {% if pos_sunburst_image %}
+      <div class="chart-container">
+        <h2>POS Sunburst Chart</h2>
+        <img src="data:image/png;base64, {{ pos_sunburst_image }}" alt="POS Sunburst Chart">
+      </div>
+    {% endif %}
+
+    {% if dependency_tree_img %}
+      <div class="chart-container">
+        <h2>Dependency Tree</h2>
+        <div>{{ dependency_tree_img | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    const textInput     = document.querySelector('input[name="input"]');
+    const mainForm      = document.querySelector('form[action="/"][method="post"]:not([enctype])');
+    const loaderOverlay = document.getElementById('loader-overlay');
+    const stageEl       = document.getElementById('loader-stage');
+    const barEl         = document.getElementById('progress-bar');
+    const finishedNote  = document.getElementById('finished-note');
+    const failedNote    = document.getElementById('failed-note');
+
+    // Random sentence → auto-submit
+    function fetchRandomSentence() {
+      fetch('/get_random_sentence')
+        .then(r => r.json())
+        .then(data => { textInput.value = data.sentence; mainForm.submit(); })
+        .catch(err => console.error('Error fetching random sentence:', err));
+    }
+
+    // Microphone
+    const micBtn = document.getElementById('mic-btn');
+    let mediaRecorder, audioChunks = [], isRecording = false;
+    micBtn.addEventListener('click', toggleRecording);
+
+    async function toggleRecording() {
+      if (!isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+          mediaRecorder.onstop = () => sendAudioToServer(new Blob(audioChunks, { type: 'audio/webm' }));
+          mediaRecorder.start();
+          isRecording = true;
+          micBtn.textContent = '🛑';
+          micBtn.style.backgroundColor = '#dc3545';
+        } catch (err) {
+          console.error('Mic error:', err);
+          alert('Could not access the microphone. Please check browser permissions.');
         }
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        micBtn.textContent = '🎤';
+        micBtn.style.backgroundColor = '#58b0fd';
+      }
+    }
 
-        const micBtn = document.getElementById('mic-btn');
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecording = false;
-        micBtn.addEventListener('click', toggleRecording);
-        
-        async function toggleRecording() {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
-                    mediaRecorder.onstop = () => sendAudioToServer(new Blob(audioChunks, { type: 'audio/webm' }));
-                    mediaRecorder.start();
-                    isRecording = true;
-                    micBtn.innerHTML = '🛑';
-                    micBtn.style.backgroundColor = '#dc3545';
-                } catch (err) {
-                    console.error('Error accessing microphone:', err);
-                    alert('Could not access the microphone. Please check browser permissions.');
-                }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                micBtn.innerHTML = '🎤';
-                micBtn.style.backgroundColor = '#58b0fd';
-            }
-        }
+    function sendAudioToServer(audioBlob) {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      textInput.placeholder = 'Transcribing, please wait...';
+      micBtn.disabled = true;
 
-        function sendAudioToServer(audioBlob) {
-            const formData = new FormData();
-            formData.append('audio', audioBlob, 'recording.webm');
-            textInput.placeholder = 'Transcribing, please wait...';
-            micBtn.disabled = true;
-
-            fetch('/analyze_voice', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.text) {
-                    textInput.value = data.text;
-                    mainForm.submit();
-                } else {
-                    console.error('Error from server:', data.error);
-                    alert('Failed to transcribe audio: ' + data.error);
-                }
-            })
-            .catch(error => console.error('Error sending audio:', error))
-            .finally(() => {
-                micBtn.disabled = false;
-                textInput.placeholder = 'Enter text...';
-                audioChunks = [];
-            });
-        }
-
-        const loaderOverlay = document.getElementById('loader-overlay');
-        const allForms = document.querySelectorAll('form');
-        allForms.forEach(form => {
-            form.addEventListener('submit', () => {
-                loaderOverlay.style.display = 'flex';
-            });
+      fetch('/analyze_voice', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+          if (data.text) { textInput.value = data.text; mainForm.submit(); }
+          else { console.error('Server error:', data.error); alert('Failed to transcribe audio: ' + data.error); }
+        })
+        .catch(err => console.error('Send audio error:', err))
+        .finally(() => {
+          micBtn.disabled = false;
+          textInput.placeholder = 'Enter text...';
+          audioChunks = [];
         });
-    </script>
+    }
+
+    // Show overlay while submitting
+    const allForms = document.querySelectorAll('form');
+    allForms.forEach(form => form.addEventListener('submit', () => { showOverlay(); }));
+
+    function showOverlay() {
+      finishedNote.style.display = 'none';
+      failedNote.style.display = 'none';
+      stageEl.textContent = 'Queued…';
+      barEl.style.width = '0%';
+      loaderOverlay.style.display = 'flex';
+    }
+
+    // Real progress polling + auto-open results 1s after finish
+    if (window.currentJobId) {
+      showOverlay();
+      let done = false;
+      const poll = setInterval(() => {
+        fetch(`/progress/${window.currentJobId}`)
+          .then(r => r.json())
+          .then(info => {
+            if (info.error) throw new Error(info.error);
+            const pct = Math.max(0, Math.min(100, info.pct || 0));
+            barEl.style.width = pct + '%';
+            stageEl.textContent = info.stage ? `${info.stage}…` : 'Working…';
+
+            if (info.status === 'finished' && !done) {
+              done = true;
+              finishedNote.style.display = 'block';
+              stageEl.textContent = 'Finished';
+              barEl.style.width = '100%';
+              clearInterval(poll);
+              setTimeout(() => {
+                window.location.href = `/results/${window.currentJobId}`;
+              }, 1000); // ← auto-open results after 1s
+            } else if (info.status === 'failed' && !done) {
+              done = true;
+              failedNote.style.display = 'block';
+              stageEl.textContent = 'Error';
+              clearInterval(poll);
+            }
+          })
+          .catch(err => {
+            console.error('Progress error:', err);
+            clearInterval(poll);
+            failedNote.style.display = 'block';
+            stageEl.textContent = 'Error';
+          });
+      }, 800);
+    }
+  </script>
 </body>
 </html>

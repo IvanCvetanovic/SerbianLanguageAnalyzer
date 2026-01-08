@@ -1,9 +1,12 @@
-import sys
 import os
+import uuid
 import random
-import collections
-from googletrans import Translator
+from pathlib import Path
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from app_modules.local_translator import LocalSrToEnTranslator
 
 from app_modules.summarizer import extractive_summary, abstractive_summary
 from app_modules.topic_modeller import get_topics
@@ -14,93 +17,197 @@ from app_modules.text_analyzer import TextAnalyzer
 from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.graph_maker import Visualizer
 
+import pyvis
 
+
+# -----------------------------
+# App setup
+# -----------------------------
+BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__)
+app.jinja_env.globals.update(zip=zip)  # allow zip() in templates
 
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+UPLOAD_FOLDER = BASE_DIR / 'uploads'
+UPLOAD_FOLDER.mkdir(exist_ok=True)
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 
-translator = Translator()
-transcriber = VoiceTranscriber(model_size="medium")
-text_analyzer = TextAnalyzer()
-visualizer = Visualizer()
+# Serve pyvis static assets (for dependency tree HTML)
+pyvis_path = Path(pyvis.__file__).resolve().parent
+@app.route('/lib/<path:filename>')
+def pyvis_static(filename):
+    return send_from_directory(pyvis_path / 'lib', filename)
 
-pyvis_path = os.path.join(os.path.dirname(__file__), ".venv/Lib/site-packages/pyvis")
-app.add_url_rule(
-    '/lib/path:filename>',
-    'pyvis_static',
-    lambda filename: send_from_directory(os.path.join(pyvis_path, 'lib'), filename)
-)
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    view_data = {
-        "words": [], "lemmas": [], "ner_results": [], "original_input": "",
-        "translated_sentence": "", "dependency_tree_img": None,
-        "extractive_summary": [], "abstractive_summary": None, "topics": [],
-        "zipped_data": [], "word_cloud_image": None, "ner_heatmap_image": None,
-        "pos_sunburst_image": None, "error_message": None
+# -----------------------------
+# Heavy objects
+# -----------------------------
+translator     = LocalSrToEnTranslator()
+transcriber    = VoiceTranscriber(model_size="medium")
+text_analyzer  = TextAnalyzer()
+visualizer     = Visualizer()
+
+# -----------------------------
+# Async infra + progress
+# -----------------------------
+executor = ThreadPoolExecutor(max_workers=2)
+
+# job bookkeeping
+jobs = {}       # job_id -> dict
+progress = {}   # job_id -> {"pct": int, "stage": str, "status": "running|finished|failed"}
+
+def _report(job_id: str, pct: int, stage: str):
+    info = progress.get(job_id, {})
+    info.update({"pct": int(pct), "stage": stage})
+    progress[job_id] = info
+
+
+# -----------------------------
+# Core analysis (with progress)
+# -----------------------------
+def run_analysis(input_text, features, job_id: str):
+    progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running"}
+
+    result = {
+        "original_input": input_text,
+        "translated_sentence": "",
+        "words": [],
+        "zipped_data": [],
+        "extractive_summary": [],
+        "abstractive_summary": None,
+        "topics": [],
+        "word_cloud_image": None,
+        "ner_heatmap_image": None,
+        "pos_sunburst_image": None,
+        "dependency_tree_img": None,
+        "ner_results": [],
+        "error_message": None
     }
 
-    if request.method == "POST":
-        input_string = ""
+    MAX_LINK_LOOKUPS = 40
+    BATCH_TRANSLATE_SIZE = 50
+    SAFE_DEFAULT = "/"
 
-        if 'audio_file' in request.files and request.files['audio_file'].filename != '':
-            file = request.files['audio_file']
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            input_string = transcriber.transcribe_audio_file(filepath)
-            os.remove(filepath)
-        else:
-            input_string = request.form.get("input", "").strip()
+    try:
+        _report(job_id, 5, "Tokenizing")
+        words = WordController.split_into_words(input_text)
+        result["words"] = words
 
-        if not input_string:
-            view_data["error_message"] = "Input cannot be empty!"
-            return render_template("index.html", **view_data)
+        if "translation" in features:
+            _report(job_id, 15, "Translating sentence")
+            try:
+                result["translated_sentence"] = WordController.translate_to_english(input_text, translator)
+            except Exception:
+                result["translated_sentence"] = SAFE_DEFAULT
 
-        view_data["original_input"] = input_string
-        view_data["translated_sentence"] = WordController.translate_sentence(input_string, translator)
-        view_data["words"] = WordController.split_into_words(input_string)
-        
-        latin_words = WordController.transliterate_cyrillic_to_latin(view_data["words"])
+        _report(job_id, 25, "Preparing words")
+        latin_words = WordController.transliterate_cyrillic_to_latin(words)
         lemmas = WordController.lemmatize_words(latin_words)
         transliterated_lemmas = WordController.transliterate_latin_to_cyrillic(lemmas)
-        
-        definitions = WordController.find_local_definitions(transliterated_lemmas)
-        online_definitions = WordController.process_links_for_lemmas(transliterated_lemmas)
-        translations = WordController.translate_words(lemmas, translator)
-        word_types = WordController.get_word_types(latin_words)
-        word_numbers = WordController.get_word_numbers(latin_words)
-        word_persons = WordController.get_word_persons(latin_words)
-        word_cases = WordController.get_word_cases(latin_words)
-        word_genders = WordController.get_word_genders(latin_words)
+        unique_lemmas = list(dict.fromkeys(lemmas))
 
-        view_data["ner_results"] = text_analyzer.analyze_named_entities(input_string)
-        dp_results = text_analyzer.analyze_dependency_parsing(input_string)
-        word_heads = [dp["head"] for dp in dp_results]
-        word_deprels = [dp["deprel"] for dp in dp_results]
-        view_data["dependency_tree_img"] = text_analyzer.visualize_dependency_tree(input_string)
+        _report(job_id, 35, "Reading local dictionaries")
+        try:
+            definitions_list = WordController.find_local_definitions(transliterated_lemmas)
+        except Exception:
+            definitions_list = [SAFE_DEFAULT] * len(lemmas)
 
-        view_data["extractive_summary"] = extractive_summary(input_string, num_sentences=2)
-        view_data["abstractive_summary"] = abstractive_summary(input_string, translator)
-        view_data["topics"] = get_topics([input_string], translator)
+        _report(job_id, 45, "Tagging morphology")
+        try:
+            word_types   = WordController.get_word_types(latin_words)
+            word_numbers = WordController.get_word_numbers(latin_words)
+            word_persons = WordController.get_word_persons(latin_words)
+            word_cases   = WordController.get_word_cases(latin_words)
+            word_genders = WordController.get_word_genders(latin_words)
+        except Exception:
+            n = len(latin_words)
+            word_types   = [SAFE_DEFAULT] * n
+            word_numbers = [SAFE_DEFAULT] * n
+            word_persons = [SAFE_DEFAULT] * n
+            word_cases   = [SAFE_DEFAULT] * n
+            word_genders = [SAFE_DEFAULT] * n
 
-        doc_for_viz = text_analyzer.pipeline(input_string)
-        
-        if lemmas:
-            frequencies = collections.Counter(lemmas)
-            view_data["word_cloud_image"] = visualizer.generate_word_cloud(frequencies)
-        
-        view_data["ner_heatmap_image"] = visualizer.generate_ner_heatmap(doc_for_viz)
-        view_data["pos_sunburst_image"] = visualizer.generate_pos_sunburst(doc_for_viz)
+        _report(job_id, 55, "NER & dependency parsing")
+        try:
+            result["ner_results"] = text_analyzer.analyze_named_entities(input_text)
+            dp_results = text_analyzer.analyze_dependency_parsing(input_text)
+            word_heads   = [dp.get("head", SAFE_DEFAULT)   for dp in dp_results]
+            word_deprels = [dp.get("deprel", SAFE_DEFAULT) for dp in dp_results]
+        except Exception:
+            word_heads   = [SAFE_DEFAULT] * len(lemmas)
+            word_deprels = [SAFE_DEFAULT] * len(lemmas)
 
-        view_data["zipped_data"] = zip(
-            [translation[1] for translation in translations],
+        _report(job_id, 62, "Translating lemmas")
+        translation_map = {lemma: SAFE_DEFAULT for lemma in unique_lemmas}
+        try:
+            for start in range(0, len(unique_lemmas), BATCH_TRANSLATE_SIZE):
+                chunk = unique_lemmas[start:start + BATCH_TRANSLATE_SIZE]
+                translated = translator.translate(chunk, src="sr", dest="en")
+                if not isinstance(translated, list):
+                    translated = [translated]
+                for src_word, t in zip(chunk, translated):
+                    translation_map[src_word] = getattr(t, "text", SAFE_DEFAULT) or SAFE_DEFAULT
+        except Exception:
+            pass
+
+        _report(job_id, 68, "Finding online links")
+        link_map = {lemma: SAFE_DEFAULT for lemma in unique_lemmas}
+        try:
+            to_check = unique_lemmas[:MAX_LINK_LOOKUPS]
+            checked = WordController.process_links_for_lemmas(to_check)
+            for lemma, url in zip(to_check, checked):
+                link_map[lemma] = url or SAFE_DEFAULT
+        except Exception:
+            pass
+
+        if "graphs" in features:
+            _report(job_id, 75, "Rendering dependency tree")
+            try:
+                result["dependency_tree_img"] = text_analyzer.visualize_dependency_tree(input_text)
+            except Exception:
+                result["dependency_tree_img"] = None
+
+        if "summaries" in features:
+            _report(job_id, 82, "Summarizing")
+            try:
+                result["extractive_summary"] = extractive_summary(input_text, num_sentences=2)
+            except Exception:
+                result["extractive_summary"] = []
+            try:
+                result["abstractive_summary"] = abstractive_summary(input_text, translator)
+            except Exception:
+                result["abstractive_summary"] = None
+
+        if "topic" in features:
+            _report(job_id, 86, "Topic modelling")
+            try:
+                result["topics"] = get_topics([input_text], translator)
+            except Exception:
+                result["topics"] = []
+
+        if "visuals" in features:
+            _report(job_id, 92, "Building visualizations")
+            try:
+                doc_for_viz = text_analyzer.pipeline(input_text)
+                if lemmas:
+                    from collections import Counter
+                    frequencies = Counter(lemmas)
+                    result["word_cloud_image"] = visualizer.generate_word_cloud(frequencies)
+                result["ner_heatmap_image"]  = visualizer.generate_ner_heatmap(doc_for_viz)
+                result["pos_sunburst_image"] = visualizer.generate_pos_sunburst(doc_for_viz)
+            except Exception:
+                result["word_cloud_image"]   = None
+                result["ner_heatmap_image"]  = None
+                result["pos_sunburst_image"] = None
+
+        _report(job_id, 96, "Assembling table")
+        per_word_translations = [translation_map.get(lem, SAFE_DEFAULT) for lem in lemmas]
+        per_word_links        = [link_map.get(lem, SAFE_DEFAULT)        for lem in lemmas]
+
+        result["zipped_data"] = list(zip(
+            per_word_translations,
             lemmas,
-            definitions,
-            online_definitions,
+            definitions_list,
+            per_word_links,
             word_types,
             word_numbers,
             word_persons,
@@ -108,11 +215,115 @@ def home():
             word_genders,
             word_heads,
             word_deprels,
-        )
+        ))
 
-        return render_template("index.html", **view_data, zip=zip)
+        progress[job_id].update({"pct": 100, "stage": "Finished", "status": "finished"})
+        return result
+
+    except Exception as e:
+        result["error_message"] = str(e)
+        progress[job_id].update({
+            "status": "failed",
+            "stage": "Error",
+            "pct": progress[job_id].get("pct", 0)
+        })
+        return result
+
+
+# -----------------------------
+# Routes
+# -----------------------------
+@app.route("/", methods=["GET", "POST"])
+def home():
+    view_data = {
+        "words": [],
+        "lemmas": [],
+        "ner_results": [],
+        "original_input": "",
+        "translated_sentence": "",
+        "dependency_tree_img": None,
+        "extractive_summary": [],
+        "abstractive_summary": None,
+        "topics": [],
+        "zipped_data": [],
+        "word_cloud_image": None,
+        "ner_heatmap_image": None,
+        "pos_sunburst_image": None,
+        "error_message": None
+    }
+
+    if request.method == "POST":
+        selected_features = request.form.getlist("features")
+
+        # Always async to enable progress bar
+        input_string = ""
+        if 'audio_file' in request.files and request.files['audio_file'].filename != '':
+            file = request.files['audio_file']
+            filepath = Path(app.config['UPLOAD_FOLDER']) / file.filename
+            file.save(filepath)
+            try:
+                input_string = transcriber.transcribe_audio_file(str(filepath))
+            finally:
+                try:
+                    filepath.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        else:
+            input_string = (request.form.get("input") or "").strip()
+
+        if not input_string:
+            view_data["error_message"] = "Input cannot be empty!"
+            return render_template("index.html", **view_data)
+
+        job_id = str(uuid.uuid4())
+        progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running"}
+
+        future = executor.submit(run_analysis, input_string, selected_features, job_id)
+        jobs[job_id] = {
+            "future": future,
+            "status": "running",
+            "result": None,
+            "created_at": datetime.utcnow(),
+            "error": None
+        }
+
+        return render_template("index.html", job_id=job_id, **view_data)
 
     return render_template("index.html", **view_data)
+
+
+@app.route("/progress/<job_id>")
+def get_progress(job_id):
+    info = progress.get(job_id)
+    if not info:
+        return jsonify({"error": "unknown job id"}), 404
+    return jsonify(info)
+
+
+@app.route("/results/<job_id>")
+def show_results(job_id):
+    job = jobs.get(job_id)
+    if not job:
+        return "Job not found", 404
+
+    fut = job["future"]
+    if fut.done() and job["result"] is None:
+        try:
+            job["result"] = fut.result()
+            job["status"] = "finished"
+            if job_id in progress and progress[job_id].get("status") != "failed":
+                progress[job_id].update({"status": "finished", "pct": 100, "stage": "Finished"})
+        except Exception as e:
+            job["status"] = "failed"
+            job["result"] = {"error_message": str(e)}
+            if job_id in progress:
+                progress[job_id].update({"status": "failed", "stage": "Error"})
+
+    if job["status"] != "finished":
+        return render_template("index.html", error_message="Job not finished yet.")
+
+    return render_template("index.html", **job["result"])
+
 
 @app.route("/get_random_sentence")
 def get_random_sentence():
@@ -120,24 +331,26 @@ def get_random_sentence():
     sentence = SentenceGenerator.get_random_sentence(fairy_tale.get_url())
     return jsonify({"sentence": sentence})
 
+
 @app.route('/analyze_voice', methods=['POST'])
 def analyze_voice():
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file part in the request.'})
-    
     file = request.files['audio']
-    
     if file.filename == '':
         return jsonify({'error': 'No selected file.'})
 
-    if file:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_recording.webm')
-        file.save(filepath)
-        transcribed_text = transcriber.transcribe_audio_file(filepath)
-        os.remove(filepath)
+    tmp_path = UPLOAD_FOLDER / 'temp_recording.webm'
+    file.save(tmp_path)
+    try:
+        transcribed_text = transcriber.transcribe_audio_file(str(tmp_path))
         return jsonify({'text': transcribed_text})
-    
-    return jsonify({'error': 'File processing failed.'})
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     app.run(debug=False)

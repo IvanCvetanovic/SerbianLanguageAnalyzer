@@ -19,20 +19,13 @@ class WordController:
         print(words)
         return words
 
-
     @staticmethod
-    def translate_words(words, translator):
-        translations = []
-        for word in words:
-            translated_word = translator.translate(word, src="sr", dest="en").text
-            translations.append((word, translated_word))
+    def translate_to_english(text_or_texts, translator):
+        res = translator.translate(text_or_texts, src="sr", dest="en")
+        if isinstance(res, list):
+            return [r.text for r in res]
+        return res.text
 
-        return translations
-    
-    @staticmethod
-    def translate_sentence(sentence, translator):
-        translation = translator.translate(sentence, src="sr", dest="en")
-        return translation.text
 
     @staticmethod
     def lemmatize_words(words):

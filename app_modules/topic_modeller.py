@@ -16,18 +16,13 @@ def load_serbian_stopwords(csv_path: str) -> list[str]:
                 stopwords.append(w)
     return stopwords
 
-def translate_words_to_english(words: list[str], translator) -> list[str]:
-    translations = []
-    for word in words:
-        try:
-            translation_result = translator.translate(word, src='sr', dest='en')
-            translated = translation_result.text
-            print(f"{word} - ({translated})")
-            translations.append(translated)
-        except Exception as e:
-            print(f"{word} - (translation failed: {e})")
-            translations.append(word)
-    return translations
+@staticmethod
+def translate_to_english(text_or_texts, translator):
+    res = translator.translate(text_or_texts, src="sr", dest="en")
+    if isinstance(res, list):
+        return [r.text for r in res]
+    return res.text
+
 
 def get_topics(
     docs: list[str],
@@ -59,7 +54,7 @@ def get_topics(
         sr_words = [terms[i] for i in top_idxs]
         
         if translate:
-            en_words = translate_words_to_english(sr_words, translator)
+            en_words = translate_to_english(sr_words, translator)
             formatted_topic = [f"{sr} - ({en})" for sr, en in zip(sr_words, en_words)]
             topics.append(formatted_topic)
         else:
