@@ -1,17 +1,11 @@
 import re
 import numpy as np
 import networkx as nx
+import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
-import torch
-from transformers import pipeline
 
-DEVICE = 0 if torch.cuda.is_available() else -1
-summarizer = pipeline(
-    "summarization",
-    model="csebuetnlp/mT5_multilingual_XLSum",
-    tokenizer="csebuetnlp/mT5_multilingual_XLSum",
-    device=DEVICE,
-)
+OLLAMA_URL = "http://localhost:11434/api/generate"
+LLAMA_MODEL = "llama3.1:8b"
 
 _LAT_TO_CYR = {
     "dž": "џ", "Dž": "Џ", "DŽ": "Џ",
@@ -40,19 +34,15 @@ def transliterate_to_latin(text: str) -> str:
 def split_sentences(text: str) -> list[str]:
     if not text:
         return []
-
     abbr = ["dr.", "mr.", "mrs.", "g.", "prof.", "itd.", "npr.", "str.", "br.", "ul."]
     PH = "§DOT§"
     tmp = text
     for a in abbr:
         tmp = tmp.replace(a, a.replace(".", PH))
-
     pattern = r'(?<=[\.!?])\s+(?=(?:[A-ZŠĐČĆŽ]|[А-ЯЉЊЏЋЂ]))'
     parts = re.split(pattern, tmp.strip())
-
     sents = [p.replace(PH, ".").strip() for p in parts if p.strip()]
     return sents
-
 
 def build_similarity_matrix(sentences: list[str]) -> np.ndarray:
     vec = TfidfVectorizer()
@@ -72,19 +62,28 @@ def extractive_summary(text: str, num_sentences: int = 2) -> list[str]:
     selected = sorted(ranked[:num_sentences], key=lambda x: sents.index(x[1]))
     return [s for _, s in selected]
 
+def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
+    payload = {
+        "model": LLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": temperature},
+    }
+    r = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    r.raise_for_status()
+    return r.json().get("response", "").strip()
+
 def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int = 30, num_beams: int = 4) -> tuple[str, str]:
     is_latin = bool(re.search(r"[A-Za-z]", text))
     text_cyr = transliterate_to_cyrillic(text) if is_latin else text
-    prefixed = "Sumiraj ovaj tekst i samo to pošalji nazad: " + text_cyr
-    out = summarizer(
-        prefixed,
-        max_length=max_len,
-        min_length=min_len,
-        num_beams=num_beams,
-        no_repeat_ngram_size=2,
-        early_stopping=True,
+    prompt = (
+        "Sumiraj sledeći tekst na srpskom jeziku.\n"
+        "Vrati samo sažetak, bez objašnjenja.\n"
+        f"Sažetak neka bude između {min_len} i {max_len} reči.\n\n"
+        f"Tekst:\n{text_cyr}\n\n"
+        "Sažetak:"
     )
-    summary = out[0]["summary_text"]
+    summary = _ollama_generate(prompt, temperature=0.2)
     summary_latin = transliterate_to_latin(summary) if is_latin else summary
-    translation = translator.translate(summary_latin, dest='en').text
+    translation = translator.translate(summary_latin, dest="en").text
     return summary_latin, translation
