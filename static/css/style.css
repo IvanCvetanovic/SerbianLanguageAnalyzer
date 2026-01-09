@@ -39,3 +39,4 @@ tbody tr:nth-child(even) { background:#fffceb; }
 .progress-bar { height:100%; width:0%; background:#2c38dd; transition: width .2s linear; }
 #finished-note { margin-top:10px; color:#2e7d32; display:none; }
 #failed-note { margin-top:10px; color:#c62828; display:none; }
+#grammar-suggested { white-space: pre-wrap; }

@@ -1,115 +1,154 @@
 {% if original_input %}
-  <div>
-    <h2 style="margin-top:20px;">Original Input:</h2>
-    <p>{{ original_input }}</p>
+  <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
 
-    {% if translated_sentence %}
-      <h2>Translated Input:</h2>
-      <p>{{ translated_sentence }}</p>
-    {% endif %}
+    <div style="flex:1; min-width:320px;">
+      {% if grammar_suggestion %}
+        <div class="summary" style="margin:0;">
+          <h2>Grammar suggestion</h2>
+          <p><strong>Suggested:</strong></p>
+          <p id="grammar-suggested">{{ grammar_suggestion }}</p>
+          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <button type="button" class="text-submit" id="btn-use-corrected">Use suggested version</button>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="flex:1; min-width:320px;">
+      <div class="summary" style="margin:0;">
+        <h2>Original Input:</h2>
+        <p>{{ original_input }}</p>
+
+        {% if translated_sentence %}
+          <h2 style="margin-top:15px;">Translated Input:</h2>
+          <p>{{ translated_sentence }}</p>
+        {% endif %}
+      </div>
+    </div>
+
   </div>
 
-  {% if hate_speech %}
-    <div class="summary">
-      <h2>Hate / Abuse Detection</h2>
+  {% if hate_speech or sentiment or sentence_sentiments %}
+    <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
 
-      {% if hate_speech.overall %}
-        <p>
-          <strong>Status:</strong>
-          {% if hate_speech.overall.flagged %}
-            <span style="color:#b00020;">🚩 Abusive / Problematic</span>
-          {% else %}
-            <span style="color:#2e7d32;">✅ Not Abusive</span>
-          {% endif %}
-        </p>
+      {% if hate_speech %}
+        <div style="flex:1; min-width:320px;">
+          <div class="summary" style="margin:0;">
+            <h2>Hate / Abuse Detection</h2>
 
-        <p>
-          <strong>Top label:</strong>
-          {{ hate_speech.overall.label }}
-          ({{ "%.3f"|format(hate_speech.overall.score) }})
-        </p>
-
-        <ul>
-          {% for lbl, score in hate_speech.overall.scores.items() %}
-            <li>{{ lbl }}: {{ "%.3f"|format(score) }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-
-      {% if hate_speech.sentences %}
-        <h3 style="margin-top:15px;">Sentence-level</h3>
-        <ul>
-          {% for item in hate_speech.sentences %}
-            <li style="margin-bottom:12px;">
-              <div><strong>Sentence:</strong> {{ item.sentence }}</div>
-              <div>
-                <strong>{{ item.label }}</strong>
-                ({{ "%.3f"|format(item.score) }})
-                {% if item.flagged %}
-                  <span style="color:#b00020;">🚩</span>
+            {% if hate_speech.overall %}
+              <p>
+                <strong>Status:</strong>
+                {% if hate_speech.overall.flagged %}
+                  <span style="color:#b00020;">🚩 Abusive / Problematic</span>
                 {% else %}
-                  <span style="color:#2e7d32;">✅</span>
+                  <span style="color:#2e7d32;">✅ Not Abusive</span>
                 {% endif %}
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
+              </p>
+
+              <p>
+                <strong>Top label:</strong>
+                {{ hate_speech.overall.label }}
+                ({{ "%.3f"|format(hate_speech.overall.score) }})
+              </p>
+
+              <ul>
+                {% for lbl, score in hate_speech.overall.scores.items() %}
+                  <li>{{ lbl }}: {{ "%.3f"|format(score) }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            {% if hate_speech.sentences %}
+              <h3 style="margin-top:15px;">Sentence-level</h3>
+              <ul>
+                {% for item in hate_speech.sentences %}
+                  <li style="margin-bottom:12px;">
+                    <div><strong>Sentence:</strong> {{ item.sentence }}</div>
+                    <div>
+                      <strong>{{ item.label }}</strong>
+                      ({{ "%.3f"|format(item.score) }})
+                      {% if item.flagged %}
+                        <span style="color:#b00020;">🚩</span>
+                      {% else %}
+                        <span style="color:#2e7d32;">✅</span>
+                      {% endif %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
       {% endif %}
+
+      {% if sentiment or sentence_sentiments %}
+        <div style="flex:1; min-width:320px;">
+          <div class="summary" style="margin:0;">
+            <h2>Sentiment</h2>
+
+            {% if sentiment %}
+              <p>
+                <strong>Overall:</strong> {{ sentiment.label }}
+                (confidence: {{ "%.3f"|format(sentiment.confidence) }})
+              </p>
+              <ul>
+                <li>Negative: {{ "%.3f"|format(sentiment.scores.negative) }}</li>
+                <li>Neutral: {{ "%.3f"|format(sentiment.scores.neutral) }}</li>
+                <li>Positive: {{ "%.3f"|format(sentiment.scores.positive) }}</li>
+              </ul>
+            {% endif %}
+
+            {% if sentence_sentiments %}
+              <h3 style="margin-top:15px;">Sentence-level</h3>
+              <ul>
+                {% for item in sentence_sentiments %}
+                  <li style="margin-bottom:12px;">
+                    <div><strong>Sentence:</strong> {{ item.sentence }}</div>
+                    <div>
+                      <strong>{{ item.label }}</strong>
+                      ({{ "%.3f"|format(item.confidence) }})
+                      — neg {{ "%.3f"|format(item.scores.negative) }},
+                      neu {{ "%.3f"|format(item.scores.neutral) }},
+                      pos {{ "%.3f"|format(item.scores.positive) }}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
     </div>
   {% endif %}
 
-  {% if sentiment or sentence_sentiments %}
-    <div class="summary">
-      <h2>Sentiment</h2>
+  {% if extractive_summary or abstractive_summary %}
+    <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
 
-      {% if sentiment %}
-        <p>
-          <strong>Overall:</strong> {{ sentiment.label }}
-          (confidence: {{ "%.3f"|format(sentiment.confidence) }})
-        </p>
-        <ul>
-          <li>Negative: {{ "%.3f"|format(sentiment.scores.negative) }}</li>
-          <li>Neutral: {{ "%.3f"|format(sentiment.scores.neutral) }}</li>
-          <li>Positive: {{ "%.3f"|format(sentiment.scores.positive) }}</li>
-        </ul>
+      {% if extractive_summary %}
+        <div style="flex:1; min-width:320px;">
+          <div class="summary" style="margin:0;">
+            <h2>Extractive Summary</h2>
+            <ul>
+              {% for sent in extractive_summary %}
+                <li>{{ sent }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
       {% endif %}
 
-      {% if sentence_sentiments %}
-        <h3 style="margin-top:15px;">Sentence-level</h3>
-        <ul>
-          {% for item in sentence_sentiments %}
-            <li style="margin-bottom:12px;">
-              <div><strong>Sentence:</strong> {{ item.sentence }}</div>
-              <div>
-                <strong>{{ item.label }}</strong>
-                ({{ "%.3f"|format(item.confidence) }})
-                — neg {{ "%.3f"|format(item.scores.negative) }},
-                neu {{ "%.3f"|format(item.scores.neutral) }},
-                pos {{ "%.3f"|format(item.scores.positive) }}
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
+      {% if abstractive_summary %}
+        <div style="flex:1; min-width:320px;">
+          <div class="summary" style="margin:0;">
+            <h2>Abstractive Summary</h2>
+            <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
+            <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
+          </div>
+        </div>
       {% endif %}
-    </div>
-  {% endif %}
 
-  {% if extractive_summary %}
-    <div class="summary">
-      <h2>Extractive Summary</h2>
-      <ul>
-        {% for sent in extractive_summary %}
-          <li>{{ sent }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
-
-  {% if abstractive_summary %}
-    <div class="summary">
-      <h2>Abstractive Summary</h2>
-      <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
-      <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
     </div>
   {% endif %}
 

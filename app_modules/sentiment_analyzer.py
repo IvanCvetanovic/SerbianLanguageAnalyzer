@@ -13,13 +13,11 @@ DEFAULT_MODEL_NAME = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
 SentimentLabel = Literal["negative", "neutral", "positive"]
 Mode = Literal["document", "sentences"]
 
-
 @dataclass(frozen=True)
 class SentimentResult:
     label: SentimentLabel
     confidence: float
     scores: Dict[SentimentLabel, float]
-
 
 @dataclass(frozen=True)
 class SentimentAnalysis:

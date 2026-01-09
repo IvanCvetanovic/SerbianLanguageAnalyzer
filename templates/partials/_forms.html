@@ -1,5 +1,5 @@
 <form action="/" method="post">
-  <input type="text" name="input" placeholder="Enter text..." />
+  <input type="text" name="input" placeholder="Enter text..." value="{{ original_input or '' }}" />
   <input type="submit" class="text-submit" name="submit_button" value="Analyze Text" />
   <button type="button" class="random-btn" onclick="fetchRandomSentence()">Random</button>
   <button type="button" class="icon-btn" id="mic-btn" title="Analyze with microphone">🎤</button>
@@ -10,6 +10,7 @@
     <label><input type="checkbox" name="features" value="topic" checked> Topic Modelling</label>
     <label><input type="checkbox" name="features" value="visuals" checked> Visualizations</label>
     <label><input type="checkbox" name="features" value="graphs" checked> Graphs / Tree</label>
+    <label><input type="checkbox" name="features" value="grammar" checked> Grammar correction</label>
   </div>
 </form>
 

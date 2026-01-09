@@ -107,3 +107,23 @@ if (window.currentJobId) {
       });
   }, 800);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const useBtn = document.getElementById("btn-use-corrected");
+  const keepBtn = document.getElementById("btn-keep-original");
+  const suggestedEl = document.getElementById("grammar-suggested");
+  const inputEl = document.querySelector('input[name="input"]');
+
+  if (useBtn && suggestedEl && inputEl) {
+    useBtn.addEventListener("click", () => {
+      inputEl.value = suggestedEl.textContent.trim();
+      inputEl.focus();
+    });
+  }
+
+  if (keepBtn && inputEl) {
+    keepBtn.addEventListener("click", () => {
+      inputEl.focus();
+    });
+  }
+});

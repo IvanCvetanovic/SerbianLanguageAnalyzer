@@ -17,6 +17,7 @@ from app_modules.text_analyzer import TextAnalyzer
 from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.graph_maker import Visualizer
 from app_modules.hate_speech_detector import analyze_hate_speech
+from app_modules.grammar_corrector import correct_sentence as grammar_correct_sentence
 
 import pyvis
 
@@ -68,7 +69,11 @@ def run_analysis(input_text, features, job_id: str):
         "error_message": None,
         "sentiment": None,
         "sentence_sentiments": [],
-        "hate_speech": None
+        "hate_speech": None,
+        "grammar_suggestion": None,
+        "grammar_applied": False,
+        "selected_features": features,
+        "grammar_error": None
     }
 
     MAX_LINK_LOOKUPS = 40
@@ -76,6 +81,14 @@ def run_analysis(input_text, features, job_id: str):
     SAFE_DEFAULT = "/"
 
     try:
+        if "grammar" in features:
+            _report(job_id, 1, "Grammar correction")
+            try:
+                result["grammar_suggestion"] = grammar_correct_sentence(input_text)
+            except Exception as e:
+                result["grammar_suggestion"] = None
+                result["grammar_error"] = str(e)
+                
         _report(job_id, 5, "Tokenizing")
         words = WordController.split_into_words(input_text)
         result["words"] = words
@@ -293,11 +306,16 @@ def home():
         "pos_sunburst_image": None,
         "error_message": None,
         "sentiment": None,
-        "sentence_sentiments": []
+        "sentence_sentiments": [],
+        "grammar_suggestion": None,
+        "grammar_applied": False,
+        "selected_features": ["translation", "summaries", "topic", "visuals", "graphs", "grammar"],
+        "grammar_error": None
     }
 
     if request.method == "POST":
         selected_features = request.form.getlist("features")
+        view_data["selected_features"] = selected_features
 
         input_string = ""
         if 'audio_file' in request.files and request.files['audio_file'].filename != '':
@@ -395,4 +413,4 @@ def analyze_voice():
             pass
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
