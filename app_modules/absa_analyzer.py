@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
-import classla
+
+from app_modules.pipeline import get_nlp
 
 
 @dataclass
@@ -23,14 +24,17 @@ class SerbianABSA:
         self,
         ollama_url: str = "http://localhost:11434/api/generate",
         model: str = "llama3.1:8b",
-        use_gpu: bool = False,
         timeout_s: int = 180,
     ) -> None:
         self.ollama_url = ollama_url
         self.model = model
         self.timeout_s = int(timeout_s)
+
+        # Keep lock: classla pipeline isn't guaranteed thread-safe
         self._lock = threading.Lock()
-        self._nlp = classla.Pipeline("sr", processors="tokenize,pos,lemma,depparse", use_gpu=use_gpu)
+
+        # Reuse the single shared classla pipeline (tokenize,pos,lemma,ner,depparse)
+        self._nlp = get_nlp()
 
         self.aspect_deprels = {"root", "nsubj", "obj", "iobj", "obl", "nmod", "conj"}
 
@@ -187,6 +191,7 @@ Aspekti (tačno ovako):
         if not text:
             return []
 
+        # Safer with threads
         with self._lock:
             doc = self._nlp(text)
 
@@ -208,14 +213,18 @@ Aspekti (tačno ovako):
 
         return out
 
-_WORD_RE = re.compile(r"[A-Za-zČĆŠĐŽčćšđžА-Яа-яЉЊЏЋЂљњџћђ]+", re.UNICODE)
+
+_WORD_RE = re.compile(r"[A-Za-zČĆŠĐŽčćšđžА-Яа-яЉЊЏЋЂљњџćђ]+", re.UNICODE)
+
 
 def _tokenize_words(text: str) -> List[str]:
     return _WORD_RE.findall(text or "")
 
+
 def _safe_get(d: Dict[str, str], k: str, default: str = "/") -> str:
     v = d.get(k)
     return v if v else default
+
 
 def enrich_absa_with_translations(
     absa: List[Dict[str, Any]],

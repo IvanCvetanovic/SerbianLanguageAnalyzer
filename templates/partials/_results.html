@@ -225,6 +225,64 @@
     </div>
   {% endif %}
 
+    {% if srl %}
+    <div class="summary" style="width:80%; max-width:1000px; margin-top:20px;">
+      <h2>Semantic Role Labeling (SRL)</h2>
+
+      {% for item in srl %}
+        <div style="margin-bottom:18px; padding-top:10px; border-top:1px solid #e0e0e0;">
+          <p style="margin:0 0 8px 0;">
+            <strong>Sentence:</strong> {{ item.sentence }}
+          </p>
+
+          {% if item.frames and item.frames|length > 0 %}
+            {% for fr in item.frames %}
+              <div style="margin:10px 0 14px 0; padding:10px; background:#fafafa; border:1px solid #eee; border-radius:8px;">
+                <div style="margin-bottom:8px;">
+                  <strong>Predicate:</strong>
+                  {{ fr.predicate }}
+                  <span style="color:#666;">
+                    (lemma: {{ fr.predicate_lemma }}, idx: {{ fr.predicate_index }},
+                    negated: {{ "true" if fr.negated else "false" }})
+                  </span>
+                </div>
+
+                {% if fr.roles %}
+                  <table style="margin:0;">
+                    <thead>
+                      <tr>
+                        <th style="width:220px;">Role</th>
+                        <th>Spans</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for role, spans in fr.roles.items() %}
+                        <tr>
+                          <td><strong>{{ role }}</strong></td>
+                          <td>
+                            {% if spans %}
+                              {{ spans | join(", ") }}
+                            {% else %}
+                              /
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                {% else %}
+                  <p style="margin:0; color:#777;">No roles found for this predicate.</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <p style="color:#777; margin:0;">No SRL frames found.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if words %}
     <table>
       <thead>

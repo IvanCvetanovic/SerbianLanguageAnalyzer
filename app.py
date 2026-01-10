@@ -19,6 +19,8 @@ from app_modules.graph_maker import Visualizer
 from app_modules.hate_speech_detector import analyze_hate_speech
 from app_modules.grammar_corrector import correct_sentence as grammar_correct_sentence
 from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
+from app_modules.srl_extractor import SerbianSRLExtractor
+from app_modules.pipeline import get_nlp
 
 import pyvis
 
@@ -41,6 +43,7 @@ text_analyzer       = TextAnalyzer()
 visualizer          = Visualizer()
 sentiment_analyzer  = SerbianSentimentAnalyzer()
 absa_analyzer       = SerbianABSA()
+srl_extractor       = SerbianSRLExtractor(pipeline=get_nlp())
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -76,7 +79,8 @@ def run_analysis(input_text, features, job_id: str):
         "grammar_applied": False,
         "selected_features": features,
         "grammar_error": None,
-        "absa": None
+        "absa": None,
+        "srl": None
     }
 
     MAX_LINK_LOOKUPS = 40
@@ -139,6 +143,12 @@ def run_analysis(input_text, features, job_id: str):
         except Exception:
             word_heads   = [SAFE_DEFAULT] * len(lemmas)
             word_deprels = [SAFE_DEFAULT] * len(lemmas)
+
+        _report(job_id, 57, "Semantic role labeling")
+        try:
+            result["srl"] = srl_extractor.analyze(input_text)
+        except Exception:
+            result["srl"] = None
 
         _report(job_id, 58, "Aspect-based sentiment analysis")
         try:
