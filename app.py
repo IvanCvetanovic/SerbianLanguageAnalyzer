@@ -18,6 +18,7 @@ from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.graph_maker import Visualizer
 from app_modules.hate_speech_detector import analyze_hate_speech
 from app_modules.grammar_corrector import correct_sentence as grammar_correct_sentence
+from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
 
 import pyvis
 
@@ -39,6 +40,7 @@ transcriber         = VoiceTranscriber(model_size="medium")
 text_analyzer       = TextAnalyzer()
 visualizer          = Visualizer()
 sentiment_analyzer  = SerbianSentimentAnalyzer()
+absa_analyzer       = SerbianABSA()
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -73,7 +75,8 @@ def run_analysis(input_text, features, job_id: str):
         "grammar_suggestion": None,
         "grammar_applied": False,
         "selected_features": features,
-        "grammar_error": None
+        "grammar_error": None,
+        "absa": None
     }
 
     MAX_LINK_LOOKUPS = 40
@@ -137,6 +140,13 @@ def run_analysis(input_text, features, job_id: str):
             word_heads   = [SAFE_DEFAULT] * len(lemmas)
             word_deprels = [SAFE_DEFAULT] * len(lemmas)
 
+        _report(job_id, 58, "Aspect-based sentiment analysis")
+        try:
+            result["absa"] = absa_analyzer.analyze(input_text)
+        except Exception:
+            result["absa"] = None
+
+
         _report(job_id, 60, "Sentiment analysis")
         try:
             analysis = sentiment_analyzer.analyze(
@@ -194,7 +204,7 @@ def run_analysis(input_text, features, job_id: str):
             }
         except Exception:
             result["hate_speech"] = None
-
+            
         _report(job_id, 62, "Translating lemmas")
         translation_map = {lemma: SAFE_DEFAULT for lemma in unique_lemmas}
         try:
@@ -205,6 +215,18 @@ def run_analysis(input_text, features, job_id: str):
                     translated = [translated]
                 for src_word, t in zip(chunk, translated):
                     translation_map[src_word] = getattr(t, "text", SAFE_DEFAULT) or SAFE_DEFAULT
+        except Exception:
+            pass
+
+        try:
+            if result.get("absa"):
+                result["absa"] = enrich_absa_with_translations(
+                    result["absa"],
+                    translator=translator,
+                    translation_map=translation_map,
+                    WordController=WordController,
+                    safe_default=SAFE_DEFAULT,
+                )
         except Exception:
             pass
 

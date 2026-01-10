@@ -123,6 +123,68 @@
     </div>
   {% endif %}
 
+  {% if absa %}
+    <div class="summary" style="width:80%; max-width:1000px; margin-top:20px;">
+      <h2>Aspect-Based Sentiment Analysis</h2>
+
+      {% for sent in absa %}
+        <div style="margin-bottom:20px;">
+          <p><strong>Sentence:</strong> {{ sent.sentence }}</p>
+
+          {% if sent.aspects %}
+            <table style="margin-top:10px;">
+              <thead>
+                <tr>
+                  <th>Aspect</th>
+                  <th>Sentiment</th>
+                  <th>Confidence</th>
+                  <th>Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for a in sent.aspects %}
+                  <tr>
+                    <td>
+                      {{ a.aspect }}
+                      {% if a.aspect_en %}
+                        <div style="color:#666; font-size:0.9em;">
+                          {{ a.aspect_en }}
+                        </div>
+                      {% endif %}
+                    </td>
+
+                    <td>
+                      {% if a.sentiment == "positive" %}
+                        <span style="color:#2e7d32;">{{ a.sentiment }}</span>
+                      {% elif a.sentiment == "negative" %}
+                        <span style="color:#b00020;">{{ a.sentiment }}</span>
+                      {% else %}
+                        <span style="color:#616161;">{{ a.sentiment }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td>{{ "%.2f"|format(a.confidence) }}</td>
+
+                    <td>
+                      {{ a.evidence }}
+                      {% if a.evidence_en %}
+                        <div style="color:#666; font-size:0.9em;">
+                          {{ a.evidence_en }}
+                        </div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p style="color:#777;">No aspects detected.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if extractive_summary or abstractive_summary %}
     <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
 
