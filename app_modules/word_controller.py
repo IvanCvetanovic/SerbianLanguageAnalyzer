@@ -1,6 +1,7 @@
 from cyrtranslit import to_latin, to_cyrillic
 import csv
-import requests
+import urllib.parse
+import re
 
 from app_modules.pipeline import get_nlp
 
@@ -46,21 +47,70 @@ class WordController:
     def transliterate_cyrillic_to_latin(words):
         return [to_latin(word, "sr") for word in words]
 
-    @staticmethod
-    def process_links_for_lemmas(transliterated_lemmas):
-        base_url = "http://serbiandictionary.com/translate/"
-        results = []
+    _WORDNET_LATIN_CACHE = {}
 
-        for lemma in transliterated_lemmas:
-            url = base_url + lemma
-            try:
-                response = requests.get(url, timeout=5)
-                if response.status_code == 200:
-                    results.append(url)
-                else:
-                    results.append("/")
-            except requests.RequestException:
-                results.append("/")
+    @staticmethod
+    def _load_wordnet_latin(csv_file_path):
+        if csv_file_path in WordController._WORDNET_LATIN_CACHE:
+            return WordController._WORDNET_LATIN_CACHE[csv_file_path]
+
+        known = set()
+        with open(csv_file_path, mode="r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if not row:
+                    continue
+                word_cyr = (row[0] or "").strip()
+                if not word_cyr:
+                    continue
+
+                word_lat = to_latin(word_cyr, "sr").lower()
+                known.add(word_lat)
+
+        WordController._WORDNET_LATIN_CACHE[csv_file_path] = known
+        return known
+
+    @staticmethod
+    def process_links_for_lemmas(
+        lemmas,
+        csv_file_path=r"C:\Users\PrOfSeS\Desktop\Master Thesis Project\data\Serbian-Wordnet.csv",
+        safe_default="/",
+    ):
+        base_url = "https://en.pons.com/translate/serbian-english/"
+        allowed = re.compile(r"[^0-9A-Za-zŠĐČĆŽšđčćž]+")
+
+        known_words_latin = WordController._load_wordnet_latin(csv_file_path)
+
+        results = []
+        for lemma in (lemmas or []):
+            if lemma is None:
+                results.append(safe_default)
+                continue
+
+            w = str(lemma).strip()
+            if not w:
+                results.append(safe_default)
+                continue
+
+            w_latin = to_latin(w, "sr").lower()
+            w_clean = allowed.sub(" ", w_latin).strip()
+            if not w_clean:
+                results.append(safe_default)
+                continue
+
+            parts = w_clean.split()
+            if len(parts) != 1:
+                results.append(safe_default)
+                continue
+
+            token = parts[0]
+
+            if token not in known_words_latin:
+                results.append(safe_default)
+                continue
+
+            token_enc = urllib.parse.quote(token, safe="")
+            results.append(base_url + token_enc)
 
         return results
 
