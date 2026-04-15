@@ -4,13 +4,17 @@
 <body>
 
   {% if job_id %}
-    <script>window.currentJobId = "{{ job_id }}";</script>
+    <script>
+      window.currentJobId    = "{{ job_id }}";
+      window.selectedFeatures = {{ (selected_features or []) | tojson }};
+    </script>
   {% endif %}
 
   {% include "partials/_loader.html" %}
 
   <header>
     <h1>Text Analyzer for Serbian Language</h1>
+    <p>Grammar &bull; Sentiment &bull; Hate Speech &bull; ABSA &bull; SRL &bull; Summaries &bull; Topics &bull; Visualizations</p>
   </header>
 
   <div class="container">

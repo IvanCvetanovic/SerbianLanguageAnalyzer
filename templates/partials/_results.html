@@ -1,335 +1,41 @@
-{% if original_input %}
-  <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
+<div id="results-container" style="display:none; flex-direction:column; align-items:center; width:100%;">
 
-    <div style="flex:1; min-width:320px;">
-      {% if grammar_suggestion %}
-        <div class="summary" style="margin:0;">
-          <h2>Grammar suggestion</h2>
-          <p><strong>Suggested:</strong></p>
-          <p id="grammar-suggested">{{ grammar_suggestion }}</p>
-          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
-            <button type="button" class="text-submit" id="btn-use-corrected">Use suggested version</button>
-          </div>
-        </div>
-      {% endif %}
+  <!-- Slim progress bar shown after first section arrives while job is still running -->
+  <div id="slim-progress" style="display:none; width:80%; max-width:1000px; margin-top:16px; padding:10px 16px; background:#f4f4f4; border-radius:6px; align-items:center; gap:12px;">
+    <span id="slim-stage" style="font-size:.95em; color:#333; white-space:nowrap; min-width:180px;"></span>
+    <div class="progress" style="flex:1; margin:0;">
+      <div class="progress-bar" id="slim-bar"></div>
     </div>
-
-    <div style="flex:1; min-width:320px;">
-      <div class="summary" style="margin:0;">
-        <h2>Original Input:</h2>
-        <p>{{ original_input }}</p>
-
-        {% if translated_sentence %}
-          <h2 style="margin-top:15px;">Translated Input:</h2>
-          <p>{{ translated_sentence }}</p>
-        {% endif %}
-      </div>
-    </div>
-
   </div>
 
-  {% if hate_speech or sentiment or sentence_sentiments %}
-    <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
+  <!-- Error banner (shown if job fails after overlay is dismissed) -->
+  <div id="job-error-banner" style="display:none;" class="alert"></div>
 
-      {% if hate_speech %}
-        <div style="flex:1; min-width:320px;">
-          <div class="summary" style="margin:0;">
-            <h2>Hate / Abuse Detection</h2>
+  <!-- Row: grammar suggestion (left) + original/translated input (right) -->
+  <div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
+    <div id="section-grammar" style="flex:1; min-width:320px; display:none;"></div>
+    <div id="section-input"   style="flex:1; min-width:320px; display:none;"></div>
+  </div>
 
-            {% if hate_speech.overall %}
-              <p>
-                <strong>Status:</strong>
-                {% if hate_speech.overall.flagged %}
-                  <span style="color:#b00020;">🚩 Abusive / Problematic</span>
-                {% else %}
-                  <span style="color:#2e7d32;">✅ Not Abusive</span>
-                {% endif %}
-              </p>
+  <!-- Row: hate speech (left) + sentiment (right) -->
+  <div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
+    <div id="section-hate-speech" style="flex:1; min-width:320px; display:none;"></div>
+    <div id="section-sentiment"   style="flex:1; min-width:320px; display:none;"></div>
+  </div>
 
-              <p>
-                <strong>Top label:</strong>
-                {{ hate_speech.overall.label }}
-                ({{ "%.3f"|format(hate_speech.overall.score) }})
-              </p>
+  <!-- ABSA (full width) -->
+  <div id="section-absa" style="display:none; width:80%; max-width:1000px; margin-top:20px;"></div>
 
-              <ul>
-                {% for lbl, score in hate_speech.overall.scores.items() %}
-                  <li>{{ lbl }}: {{ "%.3f"|format(score) }}</li>
-                {% endfor %}
-              </ul>
-            {% endif %}
+  <!-- Summaries (flex row, two columns) -->
+  <div id="section-summaries" style="display:none; width:80%; max-width:1000px; margin-top:20px;"></div>
 
-            {% if hate_speech.sentences %}
-              <h3 style="margin-top:15px;">Sentence-level</h3>
-              <ul>
-                {% for item in hate_speech.sentences %}
-                  <li style="margin-bottom:12px;">
-                    <div><strong>Sentence:</strong> {{ item.sentence }}</div>
-                    <div>
-                      <strong>{{ item.label }}</strong>
-                      ({{ "%.3f"|format(item.score) }})
-                      {% if item.flagged %}
-                        <span style="color:#b00020;">🚩</span>
-                      {% else %}
-                        <span style="color:#2e7d32;">✅</span>
-                      {% endif %}
-                    </div>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-          </div>
-        </div>
-      {% endif %}
+  <!-- Topics -->
+  <div id="section-topics" style="display:none; width:80%; max-width:1000px; margin-top:20px;"></div>
 
-      {% if sentiment or sentence_sentiments %}
-        <div style="flex:1; min-width:320px;">
-          <div class="summary" style="margin:0;">
-            <h2>Sentiment</h2>
+  <!-- SRL (full width) -->
+  <div id="section-srl" style="display:none; width:80%; max-width:1000px; margin-top:20px;"></div>
 
-            {% if sentiment %}
-              <p>
-                <strong>Overall:</strong> {{ sentiment.label }}
-                (confidence: {{ "%.3f"|format(sentiment.confidence) }})
-              </p>
-              <ul>
-                <li>Negative: {{ "%.3f"|format(sentiment.scores.negative) }}</li>
-                <li>Neutral: {{ "%.3f"|format(sentiment.scores.neutral) }}</li>
-                <li>Positive: {{ "%.3f"|format(sentiment.scores.positive) }}</li>
-              </ul>
-            {% endif %}
+  <!-- Word table (full width) -->
+  <div id="section-words-table" style="display:none; width:95%; max-width:1600px; margin-top:20px;"></div>
 
-            {% if sentence_sentiments %}
-              <h3 style="margin-top:15px;">Sentence-level</h3>
-              <ul>
-                {% for item in sentence_sentiments %}
-                  <li style="margin-bottom:12px;">
-                    <div><strong>Sentence:</strong> {{ item.sentence }}</div>
-                    <div>
-                      <strong>{{ item.label }}</strong>
-                      ({{ "%.3f"|format(item.confidence) }})
-                      — neg {{ "%.3f"|format(item.scores.negative) }},
-                      neu {{ "%.3f"|format(item.scores.neutral) }},
-                      pos {{ "%.3f"|format(item.scores.positive) }}
-                    </div>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-          </div>
-        </div>
-      {% endif %}
-
-    </div>
-  {% endif %}
-
-  {% if absa %}
-    <div class="summary" style="width:80%; max-width:1000px; margin-top:20px;">
-      <h2>Aspect-Based Sentiment Analysis</h2>
-
-      {% for sent in absa %}
-        <div style="margin-bottom:20px;">
-          <p><strong>Sentence:</strong> {{ sent.sentence }}</p>
-
-          {% if sent.aspects %}
-            <table style="margin-top:10px;">
-              <thead>
-                <tr>
-                  <th>Aspect</th>
-                  <th>Sentiment</th>
-                  <th>Confidence</th>
-                  <th>Evidence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for a in sent.aspects %}
-                  <tr>
-                    <td>
-                      {{ a.aspect }}
-                      {% if a.aspect_en %}
-                        <div style="color:#666; font-size:0.9em;">
-                          {{ a.aspect_en }}
-                        </div>
-                      {% endif %}
-                    </td>
-
-                    <td>
-                      {% if a.sentiment == "positive" %}
-                        <span style="color:#2e7d32;">{{ a.sentiment }}</span>
-                      {% elif a.sentiment == "negative" %}
-                        <span style="color:#b00020;">{{ a.sentiment }}</span>
-                      {% else %}
-                        <span style="color:#616161;">{{ a.sentiment }}</span>
-                      {% endif %}
-                    </td>
-
-                    <td>{{ "%.2f"|format(a.confidence) }}</td>
-
-                    <td>
-                      {{ a.evidence }}
-                      {% if a.evidence_en %}
-                        <div style="color:#666; font-size:0.9em;">
-                          {{ a.evidence_en }}
-                        </div>
-                      {% endif %}
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p style="color:#777;">No aspects detected.</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  {% if extractive_summary or abstractive_summary %}
-    <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
-
-      {% if extractive_summary %}
-        <div style="flex:1; min-width:320px;">
-          <div class="summary" style="margin:0;">
-            <h2>Extractive Summary</h2>
-            <ul>
-              {% for sent in extractive_summary %}
-                <li>{{ sent }}</li>
-              {% endfor %}
-            </ul>
-          </div>
-        </div>
-      {% endif %}
-
-      {% if abstractive_summary %}
-        <div style="flex:1; min-width:320px;">
-          <div class="summary" style="margin:0;">
-            <h2>Abstractive Summary</h2>
-            <p><strong>Original:</strong> {{ abstractive_summary[0] }}</p>
-            <p><strong>Translated:</strong> {{ abstractive_summary[1] }}</p>
-          </div>
-        </div>
-      {% endif %}
-
-    </div>
-  {% endif %}
-
-  {% if topics %}
-    <div class="summary">
-      <h2>Topic Modelling</h2>
-      <ul>
-        {% for term in topics[0] %}
-          <li>{{ term }}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  {% endif %}
-
-    {% if srl %}
-    <div class="summary" style="width:80%; max-width:1000px; margin-top:20px;">
-      <h2>Semantic Role Labeling (SRL)</h2>
-
-      {% for item in srl %}
-        <div style="margin-bottom:18px; padding-top:10px; border-top:1px solid #e0e0e0;">
-          <p style="margin:0 0 8px 0;">
-            <strong>Sentence:</strong> {{ item.sentence }}
-          </p>
-
-          {% if item.frames and item.frames|length > 0 %}
-            {% for fr in item.frames %}
-              <div style="margin:10px 0 14px 0; padding:10px; background:#fafafa; border:1px solid #eee; border-radius:8px;">
-                <div style="margin-bottom:8px;">
-                  <strong>Predicate:</strong>
-                  {{ fr.predicate }}
-                  <span style="color:#666;">
-                    (lemma: {{ fr.predicate_lemma }}, idx: {{ fr.predicate_index }},
-                    negated: {{ "true" if fr.negated else "false" }})
-                  </span>
-                </div>
-
-                {% if fr.roles %}
-                  <table style="margin:0;">
-                    <thead>
-                      <tr>
-                        <th style="width:220px;">Role</th>
-                        <th>Spans</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for role, spans in fr.roles.items() %}
-                        <tr>
-                          <td><strong>{{ role }}</strong></td>
-                          <td>
-                            {% if spans %}
-                              {{ spans | join(", ") }}
-                            {% else %}
-                              /
-                            {% endif %}
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                {% else %}
-                  <p style="margin:0; color:#777;">No roles found for this predicate.</p>
-                {% endif %}
-              </div>
-            {% endfor %}
-          {% else %}
-            <p style="color:#777; margin:0;">No SRL frames found.</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  {% if words %}
-    <table>
-      <thead>
-        <tr>
-          <th>Original Word</th>
-          <th>Translation</th>
-          <th>Lemma (Base Form)</th>
-          <th>Local Definition</th>
-          <th>Online Definition</th>
-          <th>Word Type</th>
-          <th>Number</th>
-          <th>Person</th>
-          <th>Case</th>
-          <th>Gender</th>
-          <th>Head</th>
-          <th>Dependency Relation</th>
-          <th>Named Entity</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for word, lemma_data in zip(words, zipped_data) %}
-        <tr>
-          <td>{{ word }}</td>
-          <td>{{ lemma_data[0] }}</td>
-          <td>{{ lemma_data[1] }}</td>
-          <td>{{ lemma_data[2] }}</td>
-          <td>
-            {% if lemma_data[3] != "/" %}
-              <a href="{{ lemma_data[3] }}" target="_blank">{{ lemma_data[3] }}</a>
-            {% else %}
-              {{ lemma_data[3] }}
-            {% endif %}
-          </td>
-          <td>{{ lemma_data[4] }}</td>
-          <td>{{ lemma_data[5] }}</td>
-          <td>{{ lemma_data[6] }}</td>
-          <td>{{ lemma_data[7] }}</td>
-          <td>{{ lemma_data[8] }}</td>
-          <td>{{ lemma_data[9] }}</td>
-          <td>{{ lemma_data[10] }}</td>
-          <td>
-            {% set entity = ner_results | selectattr("text", "equalto", word) | map(attribute="entity") | list %}
-            {{ entity[0] if entity else "O" }}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
-{% endif %}
+</div>

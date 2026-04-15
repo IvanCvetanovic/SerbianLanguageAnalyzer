@@ -25,7 +25,6 @@ class SentimentAnalysis:
     sentences: List[SentimentResult]
     mode: Mode
 
-
 class SerbianSentimentAnalyzer:
     def __init__(
         self,

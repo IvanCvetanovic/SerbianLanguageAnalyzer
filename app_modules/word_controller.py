@@ -1,9 +1,13 @@
+from pathlib import Path
 from cyrtranslit import to_latin, to_cyrillic
 import csv
 import urllib.parse
 import re
 
 from app_modules.pipeline import get_nlp
+
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DEFAULT_WORDNET_CSV = str(_DATA_DIR / "Serbian-Wordnet.csv")
 
 
 class WordController:
@@ -17,7 +21,6 @@ class WordController:
             for word in sentence.words:
                 words.append(word.text)
 
-        print(words)
         return words
 
     @staticmethod
@@ -28,16 +31,31 @@ class WordController:
         return res.text
 
     @staticmethod
+    def _batch_analyze(words):
+        """Run the NLP pipeline once on all words instead of once per word.
+
+        Each word is placed on its own paragraph so classla treats it as a
+        separate sentence, giving the same result as individual calls but
+        with a single pipeline invocation.
+        """
+        if not words:
+            return []
+        nlp = get_nlp()
+        combined = "\n\n".join(str(w) for w in words)
+        doc = nlp(combined)
+        analyzed = [sent.words[0] for sent in doc.sentences if sent.words]
+        # Pad so the returned list always aligns with the input list
+        while len(analyzed) < len(words):
+            analyzed.append(None)
+        return analyzed
+
+    @staticmethod
     def lemmatize_words(words):
-        lemmatized_words = []
-        nlp = get_nlp()  # reuse pipeline reference
-
-        for word in words:
-            doc = nlp(word)
-            lemma = doc.sentences[0].words[0].lemma
-            lemmatized_words.append(lemma)
-
-        return lemmatized_words
+        analyzed = WordController._batch_analyze(words)
+        return [
+            (w.lemma if w is not None else word)
+            for w, word in zip(analyzed, words)
+        ]
 
     @staticmethod
     def transliterate_latin_to_cyrillic(words):
@@ -70,10 +88,30 @@ class WordController:
         WordController._WORDNET_LATIN_CACHE[csv_file_path] = known
         return known
 
+    _WORDNET_DICT_CACHE = {}
+
+    @staticmethod
+    def _load_wordnet_dict(csv_file_path):
+        if csv_file_path in WordController._WORDNET_DICT_CACHE:
+            return WordController._WORDNET_DICT_CACHE[csv_file_path]
+
+        wordnet_dict = {}
+        with open(csv_file_path, mode="r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                word = row[0].strip()
+                definition = row[2].strip()
+                wordnet_dict.setdefault(word, []).append(definition)
+
+        WordController._WORDNET_DICT_CACHE[csv_file_path] = wordnet_dict
+        return wordnet_dict
+
     @staticmethod
     def process_links_for_lemmas(
         lemmas,
-        csv_file_path=r"C:\Users\PrOfSeS\Desktop\Master Thesis Project\data\Serbian-Wordnet.csv",
+        csv_file_path=_DEFAULT_WORDNET_CSV,
         safe_default="/",
     ):
         base_url = "https://en.pons.com/translate/serbian-english/"
@@ -117,113 +155,63 @@ class WordController:
     @staticmethod
     def find_local_definitions(
         transliterated_lemmas,
-        csv_file_path=r"C:\Users\PrOfSeS\Desktop\Master Thesis Project\data\Serbian-Wordnet.csv",
+        csv_file_path=_DEFAULT_WORDNET_CSV,
     ):
-        definitions = []
-
-        with open(csv_file_path, mode="r", encoding="utf-8") as file:
-            reader = csv.reader(file)
-            wordnet_dict = {}
-
-            for row in reader:
-                word = row[0].strip()
-                definition = row[2].strip()
-
-                wordnet_dict.setdefault(word, []).append(definition)
-
-            for lemma in transliterated_lemmas:
-                definitions.append(wordnet_dict.get(lemma, "/"))
-
-        return definitions
+        wordnet_dict = WordController._load_wordnet_dict(csv_file_path)
+        return [wordnet_dict.get(lemma, "/") for lemma in transliterated_lemmas]
 
     @staticmethod
     def get_word_types(words):
-        word_types = []
-        nlp = get_nlp()
-
-        for word in words:
-            doc = nlp(word)
-            pos_tag = doc.sentences[0].words[0].upos
-            word_types.append(pos_tag)
-
-        return word_types
+        analyzed = WordController._batch_analyze(words)
+        return [
+            (w.upos if w is not None else "/")
+            for w in analyzed
+        ]
 
     @staticmethod
     def get_word_numbers(words):
-        word_numbers = []
-        nlp = get_nlp()
-
-        for word in words:
-            doc = nlp(word)
-            feats = doc.sentences[0].words[0].feats
-
-            if feats:
-                feats_dict = dict(feat.split("=") for feat in feats.split("|"))
-                number = feats_dict.get("Number", "/")
+        analyzed = WordController._batch_analyze(words)
+        result = []
+        for w in analyzed:
+            if w is not None and w.feats:
+                feats_dict = dict(feat.split("=") for feat in w.feats.split("|") if "=" in feat)
+                result.append(feats_dict.get("Number", "/"))
             else:
-                number = "/"
-
-            word_numbers.append(number)
-
-        return word_numbers
+                result.append("/")
+        return result
 
     @staticmethod
     def get_word_persons(words):
-        word_persons = []
-        nlp = get_nlp()
-
-        for word in words:
-            doc = nlp(word)
-            pos_tag = doc.sentences[0].words[0].upos
-
-            if pos_tag in {"VERB", "AUX"}:
-                feats = doc.sentences[0].words[0].feats
-                if feats:
-                    feats_dict = dict(feat.split("=") for feat in feats.split("|"))
-                    person = feats_dict.get("Person", "/")
-                else:
-                    person = "/"
+        analyzed = WordController._batch_analyze(words)
+        result = []
+        for w in analyzed:
+            if w is not None and w.upos in {"VERB", "AUX"} and w.feats:
+                feats_dict = dict(feat.split("=") for feat in w.feats.split("|") if "=" in feat)
+                result.append(feats_dict.get("Person", "/"))
             else:
-                person = "/"
-
-            word_persons.append(person)
-
-        return word_persons
+                result.append("/")
+        return result
 
     @staticmethod
     def get_word_cases(words):
-        word_cases = []
-        nlp = get_nlp()
-
-        for word in words:
-            doc = nlp(word)
-            feats = doc.sentences[0].words[0].feats
-
-            if feats:
-                feats_dict = dict(feat.split("=") for feat in feats.split("|"))
-                case = feats_dict.get("Case", "/")
+        analyzed = WordController._batch_analyze(words)
+        result = []
+        for w in analyzed:
+            if w is not None and w.feats:
+                feats_dict = dict(feat.split("=") for feat in w.feats.split("|") if "=" in feat)
+                result.append(feats_dict.get("Case", "/"))
             else:
-                case = "/"
-
-            word_cases.append(case)
-
-        return word_cases
+                result.append("/")
+        return result
 
     @staticmethod
     def get_word_genders(words):
-        word_genders = []
-        nlp = get_nlp()
-
-        for word in words:
-            doc = nlp(word)
-            feats = doc.sentences[0].words[0].feats
-
-            if feats:
-                feats_dict = dict(feat.split("=") for feat in feats.split("|"))
-                gender = feats_dict.get("Gender", "/")
+        analyzed = WordController._batch_analyze(words)
+        result = []
+        for w in analyzed:
+            if w is not None and w.feats:
+                feats_dict = dict(feat.split("=") for feat in w.feats.split("|") if "=" in feat)
+                result.append(feats_dict.get("Gender", "/"))
             else:
-                gender = "/"
-
-            word_genders.append(gender)
-
-        return word_genders
+                result.append("/")
+        return result

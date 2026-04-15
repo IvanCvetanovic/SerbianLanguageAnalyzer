@@ -50,7 +50,7 @@ class TextAnalyzer:
     def visualize_dependency_tree(self, input_string):
         doc = self.pipeline(input_string)
 
-        graph = Network()
+        graph = Network(height="500px", width="100%")
 
         for sentence in doc.sentences:
             for word in sentence.words:
@@ -66,6 +66,16 @@ class TextAnalyzer:
                                             label=word.deprel,
                                             arrows="from")
 
-        return graph.generate_html()
+        html = graph.generate_html()
+        # Fix relative lib path so it resolves correctly when served from /dependency_tree/
+        html = html.replace('src="lib/bindings/utils.js"',
+                            'src="/lib/bindings/utils.js"')
+        # Remove float:left from #mynetwork — float is ignored inside Bootstrap's flex
+        # card but can confuse width resolution in some browsers
+        html = html.replace('float: left;', '')
+        # Defer drawGraph() so the browser finishes layout before vis.js measures
+        # container.offsetWidth — without this the canvas can be stamped at the wrong size
+        html = html.replace('drawGraph();', 'setTimeout(drawGraph, 50);')
+        return html
 
 

@@ -35,7 +35,13 @@ class LocalSrToEnTranslator:
                 "temperature": temperature
             },
         }
-        r = requests.post(OLLAMA_URL, json=payload, timeout=120)
+        try:
+            r = requests.post(OLLAMA_URL, json=payload, timeout=(5, 120))
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                f"Ollama is not running or not reachable at {OLLAMA_URL}. "
+                "Start Ollama before using translation features."
+            )
         r.raise_for_status()
         return r.json().get("response", "").strip()
 

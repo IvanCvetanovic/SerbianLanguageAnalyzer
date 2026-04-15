@@ -18,7 +18,6 @@ class ABSASpan:
     confidence: float
     evidence: str
 
-
 class SerbianABSA:
     def __init__(
         self,
@@ -63,7 +62,13 @@ class SerbianABSA:
             "stream": False,
             "options": {"temperature": 0.0, "top_p": 0.9, "stop": ["```"]},
         }
-        r = requests.post(self.ollama_url, json=payload, timeout=self.timeout_s)
+        try:
+            r = requests.post(self.ollama_url, json=payload, timeout=(5, self.timeout_s))
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                f"Ollama is not running or not reachable at {self.ollama_url}. "
+                "Start Ollama before using ABSA features."
+            )
         r.raise_for_status()
         return (r.json().get("response") or "").strip()
 
