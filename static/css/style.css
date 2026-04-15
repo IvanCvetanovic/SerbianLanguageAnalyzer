@@ -23,7 +23,7 @@ button.icon-btn { background:#58b0fd; padding:10px 15px; }
 .feature-options { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
 .feature-options label { font-size:14px; }
 table { width:100%; border-collapse:collapse; margin-top:20px; border:1px solid black; }
-th { background:#4CAF50; color:#fff; }
+th { background:#2c38dd; color:#fff; }
 th, td { padding:10px; text-align:left; border:1px solid black; }
 tbody tr:nth-child(even) { background:#fffceb; }
 .summary { width:80%; max-width:1000px; margin:30px 0; padding:20px; background:#f9f9f9; border-radius:6px; border-left:4px solid #e0e0e0; }
