@@ -11,6 +11,15 @@
   <!-- Error banner (shown if job fails after overlay is dismissed) -->
   <div id="job-error-banner" style="display:none;" class="alert"></div>
 
+  <!-- Download button — shown only when analysis is complete -->
+  <div id="download-btn-wrapper" style="display:none; width:80%; max-width:1000px; margin-top:16px; text-align:right;">
+    <button id="download-pdf-btn"
+            style="background:#2c38dd;color:#fff;border:none;border-radius:6px;
+                   padding:9px 22px;font-size:.95rem;cursor:pointer;font-weight:600;">
+      &#8659; Download PDF
+    </button>
+  </div>
+
   <!-- Row: grammar suggestion (left) + original/translated input (right) -->
   <div style="display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; width:80%; max-width:1000px; margin-top:20px;">
     <div id="section-grammar" style="flex:1; min-width:320px; display:none;"></div>

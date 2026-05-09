@@ -1,4 +1,8 @@
 // ─── DOM refs ───────────────────────────────────────────────────────────────
+const downloadBtnWrapper = document.getElementById('download-btn-wrapper');
+const downloadPdfBtn     = document.getElementById('download-pdf-btn');
+if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', () => window.print());
+
 const textInput      = document.querySelector('input[name="input"]');
 const mainForm       = document.querySelector('form[action="/"][method="post"]:not([enctype])');
 const loaderOverlay  = document.getElementById('loader-overlay');
@@ -441,7 +445,9 @@ if (window.currentJobId) {
           clearInterval(poll);
           hideEl(slimProgress);
 
-          if (info.status === 'failed') {
+          if (info.status === 'finished') {
+            showEl(downloadBtnWrapper);
+          } else {
             const msg = info.error_message || 'Analysis failed. Please try again.';
             if (jobErrorBanner) {
               jobErrorBanner.textContent = msg;
@@ -478,6 +484,9 @@ const modeRemote          = document.getElementById('mode-remote');
 const remoteUrl           = document.getElementById('remote-url');
 const remoteModel         = document.getElementById('remote-model');
 const remoteKey           = document.getElementById('remote-key');
+const whisperModelSelect  = document.getElementById('whisper-model');
+const whisperStatusEl     = document.getElementById('whisper-status');
+let   whisperPollTimer    = null;
 
 function showSettingsStatus(msg, ok) {
   settingsStatus.textContent = msg;
@@ -495,6 +504,31 @@ function syncModeFields() {
 
 modeLocal.addEventListener('change', syncModeFields);
 modeRemote.addEventListener('change', syncModeFields);
+
+function showWhisperStatus(state) {
+  if (!whisperStatusEl) return;
+  if (!state || state.status === 'idle') { whisperStatusEl.style.display = 'none'; return; }
+  const colors = { ready: '#2e7d32', error: '#b00020', loading: 'var(--text-muted)' };
+  whisperStatusEl.style.color   = colors[state.status] || 'var(--text-muted)';
+  whisperStatusEl.textContent   = state.message || '';
+  whisperStatusEl.style.display = 'block';
+}
+
+function startWhisperPoll() {
+  if (whisperPollTimer) clearInterval(whisperPollTimer);
+  whisperPollTimer = setInterval(() => {
+    fetch('/api/whisper-status')
+      .then(r => r.json())
+      .then(state => {
+        showWhisperStatus(state);
+        if (state.status === 'ready' || state.status === 'error') {
+          clearInterval(whisperPollTimer);
+          whisperPollTimer = null;
+        }
+      })
+      .catch(() => { clearInterval(whisperPollTimer); whisperPollTimer = null; });
+  }, 2000);
+}
 
 function fetchOllamaModels(selectValue) {
   fetch('http://localhost:11434/api/tags')
@@ -538,6 +572,11 @@ function openSettings() {
         remoteModel.value = cfg.remote.model    || '';
         remoteKey.value   = cfg.remote.api_key  || '';
       }
+      if (cfg.whisper_model) whisperModelSelect.value = cfg.whisper_model;
+      fetch('/api/whisper-status').then(r => r.json()).then(state => {
+        showWhisperStatus(state);
+        if (state.status === 'loading') startWhisperPoll();
+      }).catch(() => {});
     })
     .catch(() => { modeLocal.checked = true; syncModeFields(); })
     .finally(() => { settingsOverlay.style.display = 'flex'; });
@@ -562,6 +601,7 @@ settingsSave.addEventListener('click', () => {
       model:    remoteModel.value.trim(),
       api_key:  remoteKey.value.trim(),
     },
+    whisper_model: whisperModelSelect.value.trim(),
   };
   settingsSave.disabled = true;
   fetch('/api/settings', {
@@ -570,9 +610,36 @@ settingsSave.addEventListener('click', () => {
     body: JSON.stringify(payload),
   })
     .then(r => r.json())
-    .then(d => showSettingsStatus(d.ok ? 'Settings saved.' : 'Error: ' + (d.error || '?'), d.ok))
+    .then(d => {
+      showSettingsStatus(d.ok ? 'Settings saved.' : 'Error: ' + (d.error || '?'), d.ok);
+      if (d.ok) startWhisperPoll();
+    })
     .catch(() => showSettingsStatus('Failed to save settings.', false))
     .finally(() => { settingsSave.disabled = false; });
+});
+
+// ─── Dependency tree print capture ───────────────────────────────────────────
+// beforeprint: snapshot the vis.js canvas inside the iframe and inject it as a
+// plain <img> so the browser's print engine can render it (iframes don't print).
+window.addEventListener('beforeprint', () => {
+  const section = document.getElementById('section-dependency-tree');
+  if (!section || section.style.display === 'none') return;
+  const iframe = section.querySelector('iframe');
+  if (!iframe) return;
+  try {
+    const canvas = iframe.contentDocument && iframe.contentDocument.querySelector('canvas');
+    if (!canvas) return;
+    const img = document.createElement('img');
+    img.id = 'dep-tree-print-img';
+    img.src = canvas.toDataURL('image/png');
+    img.style.cssText = 'max-width:100%;height:auto;display:block;margin-top:12px;';
+    iframe.parentNode.appendChild(img);
+  } catch (e) { /* canvas not ready or cross-origin — tree section stays blank */ }
+});
+
+window.addEventListener('afterprint', () => {
+  const img = document.getElementById('dep-tree-print-img');
+  if (img) img.remove();
 });
 
 // ─── Theme toggle ─────────────────────────────────────────────────────────────

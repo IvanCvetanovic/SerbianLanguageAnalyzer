@@ -81,6 +81,25 @@
       </div>
     </div>
 
+    <!-- Whisper model (always visible, independent of LLM backend mode) -->
+    <div style="margin-bottom:22px;">
+      <hr style="border:none;border-top:1px solid var(--border-card);margin-bottom:18px;">
+      <label style="font-weight:600;display:block;margin-bottom:4px;">
+        Whisper Model
+        <span style="font-weight:normal;color:var(--text-muted);font-size:.85rem;">(voice transcription)</span>
+      </label>
+      <select id="whisper-model"
+              style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);
+                     border-radius:6px;font-size:.95rem;background:var(--bg-input);color:var(--text);">
+        <option value="tiny">tiny — fastest, lowest accuracy (~75 MB)</option>
+        <option value="base">base (~142 MB)</option>
+        <option value="small">small (~244 MB)</option>
+        <option value="medium">medium — default (~769 MB)</option>
+        <option value="large">large — slowest, highest accuracy (~1.5 GB)</option>
+      </select>
+      <div id="whisper-status" style="margin-top:8px;font-size:.85rem;display:none;"></div>
+    </div>
+
     <!-- Buttons -->
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button type="button" id="settings-save"

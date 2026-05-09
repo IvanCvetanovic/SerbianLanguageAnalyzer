@@ -2,6 +2,7 @@ import os
 import uuid
 import random
 import logging
+import threading
 import requests
 from pathlib import Path
 from datetime import datetime
@@ -44,7 +45,38 @@ def pyvis_static(filename):
     return send_from_directory(pyvis_path / 'lib', filename)
 
 translator          = LocalSrToEnTranslator()
-transcriber         = VoiceTranscriber(model_size="medium")
+transcriber         = VoiceTranscriber()
+
+# ── Whisper model management ──────────────────────────────────────────────────
+WHISPER_MODELS  = ["tiny", "base", "small", "medium", "large"]
+_whisper_lock   = threading.Lock()
+_whisper_state  = {"status": "idle", "model": None, "message": ""}
+
+def _is_whisper_cached(model_size: str) -> bool:
+    return (Path.home() / ".cache" / "whisper" / f"{model_size}.pt").exists()
+
+def _load_whisper_background(model_size: str):
+    cached = _is_whisper_cached(model_size)
+    msg = ("Loading model into memory…" if cached
+           else f"Downloading {model_size} model — this may take a few minutes…")
+    with _whisper_lock:
+        _whisper_state.update({"status": "loading", "model": model_size, "message": msg})
+    try:
+        transcriber.load(model_size)
+        with _whisper_lock:
+            _whisper_state.update({"status": "ready", "model": model_size,
+                                   "message": f"{model_size.capitalize()} model ready."})
+    except Exception as e:
+        with _whisper_lock:
+            _whisper_state.update({"status": "error", "model": model_size,
+                                   "message": f"Failed to load {model_size}: {e}"})
+
+# Start loading the configured Whisper model in the background at startup
+threading.Thread(
+    target=_load_whisper_background,
+    args=(get_config().get("whisper_model", "medium"),),
+    daemon=True,
+).start()
 text_analyzer       = TextAnalyzer()
 visualizer          = Visualizer()
 sentiment_analyzer  = SerbianSentimentAnalyzer()
@@ -548,6 +580,12 @@ def analyze_voice():
         except Exception:
             pass
 
+@app.route("/api/whisper-status")
+def api_whisper_status():
+    with _whisper_lock:
+        return jsonify(dict(_whisper_state))
+
+
 @app.route("/api/settings", methods=["GET"])
 def api_get_settings():
     return jsonify(get_config())
@@ -561,6 +599,8 @@ def api_save_settings():
     if data.get("mode") not in ("local", "remote"):
         return jsonify({"error": "mode must be 'local' or 'remote'"}), 400
     cfg = get_config()
+    old_whisper = cfg.get("whisper_model", "medium")
+
     cfg["mode"] = data["mode"]
     if isinstance(data.get("local"), dict):
         if "model" in data["local"]:
@@ -569,7 +609,19 @@ def api_save_settings():
         for k in ("base_url", "model", "api_key"):
             if k in data["remote"]:
                 cfg["remote"][k] = str(data["remote"][k]).strip()
+    new_whisper = str(data.get("whisper_model", "")).strip()
+    if new_whisper in WHISPER_MODELS:
+        cfg["whisper_model"] = new_whisper
+
     save_config(cfg)
+
+    if cfg.get("whisper_model", "medium") != old_whisper:
+        threading.Thread(
+            target=_load_whisper_background,
+            args=(cfg["whisper_model"],),
+            daemon=True,
+        ).start()
+
     return jsonify({"ok": True, "config": cfg})
 
 

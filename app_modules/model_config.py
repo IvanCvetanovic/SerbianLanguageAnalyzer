@@ -8,6 +8,7 @@ _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
 _DEFAULTS: dict = {
     "mode": "local",
+    "whisper_model": "medium",
     "local": {
         "model": "llama3.1:8b",
     },

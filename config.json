@@ -1,5 +1,6 @@
 {
-  "mode": "local",
+  "mode": "remote",
+  "whisper_model": "medium",
   "local": {
     "model": "llama3.1:8b"
   },

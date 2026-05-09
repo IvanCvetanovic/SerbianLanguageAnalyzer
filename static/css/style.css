@@ -190,3 +190,65 @@ tbody tr:nth-child(even) { background: var(--bg-table-alt); }
 
 /* #slim-progress and #results-container visibility is controlled exclusively
    via inline style by app.js to avoid CSS/inline-style conflicts. */
+
+/* ── Print / PDF export ──────────────────────────────────────────────────────── */
+@media print {
+  /* Force light colours regardless of current theme */
+  :root, [data-theme="dark"] {
+    --bg:           #ffffff;
+    --bg-card:      #f9f9f9;
+    --bg-card-alt:  #fafafa;
+    --bg-table-alt: #fffceb;
+    --text:         #111111;
+    --text-muted:   #555555;
+    --text-dim:     #666666;
+    --text-stage:   #333333;
+    --border:       #cccccc;
+    --border-card:  #e0e0e0;
+    --border-table: #000000;
+    --border-sub:   #eeeeee;
+    --border-sep:   #e0e0e0;
+    --primary:      #2c38dd;
+  }
+
+  /* Hide all UI chrome */
+  form,
+  #loader-overlay,
+  #slim-progress,
+  #download-btn-wrapper,
+  #settings-overlay,
+  header button { display: none !important; }
+
+  /* Hide only the iframe — the captured snapshot img replaces it */
+  #section-dependency-tree iframe { display: none !important; }
+
+  /* Full-width result sections (override inline width:80% etc.) */
+  #results-container,
+  #results-container > div,
+  #section-absa,
+  #section-summaries,
+  #section-topics,
+  #section-srl,
+  #section-words-table,
+  #section-visuals,
+  #section-dependency-tree { width: 100% !important; max-width: none !important; }
+
+  /* Cards and chart containers */
+  .summary, .chart-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 12px 0;
+    box-shadow: none;
+  }
+
+  /* Avoid breaking content mid-page */
+  .summary, .chart-container, .srl-frame, tr { page-break-inside: avoid; }
+
+  /* Keep header gradient when printing */
+  header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Smaller font for the wide word table */
+  #section-words-table table { font-size: .75em; }
+
+  body { background: #fff; }
+}
