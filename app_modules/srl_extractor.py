@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from app_modules.pipeline import get_nlp
+from app_modules.model_config import get_config
 
 
 ROLE_SET = [
@@ -362,7 +363,7 @@ class SerbianSRLExtractor:
 
     def _call_ollama(self, prompt: str) -> str:
         payload = {
-            "model": self.model,
+            "model": get_config()["local"]["model"],
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.0},

@@ -7,8 +7,69 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
+from app_modules.model_config import get_config, get_openai_client
 
 from app_modules.pipeline import get_nlp
+
+_THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
+_ABSA_SYSTEM = (
+    'Analiziraj aspekte i njihov sentiment u sledećem tekstu. Odgovor daj kao JSON niz u formatu:\n'
+    '[{"sentence": "...", "aspects": [{"aspect": "...", "sentiment": "positive|negative|neutral", '
+    '"confidence": 0.0-1.0, "evidence": "..."}]}]\n'
+    'Odgovori SAMO JSON-om, bez ikakvog dodatnog teksta.'
+)
+
+
+def parse_absa_smart(text):
+    if not text:
+        return None
+    text = re.sub(r'^```(?:json)?\s*', '', text)
+    text = re.sub(r'\s*```$', '', text).strip()
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            return parsed
+    except Exception:
+        pass
+    results = []
+    i = 0
+    while i < len(text):
+        if text[i] == '[':
+            depth = 0
+            in_string = False
+            escape = False
+            start = i
+            for j in range(i, len(text)):
+                c = text[j]
+                if escape:
+                    escape = False
+                    continue
+                if c == '\\':
+                    escape = True
+                    continue
+                if c == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if c == '[':
+                    depth += 1
+                elif c == ']':
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            chunk = json.loads(text[start:j + 1])
+                            if isinstance(chunk, list):
+                                results.extend(chunk)
+                        except Exception:
+                            pass
+                        i = j + 1
+                        break
+            else:
+                break
+        else:
+            i += 1
+    return results if results else None
 
 
 @dataclass
@@ -57,7 +118,7 @@ class SerbianABSA:
 
     def _ollama_generate(self, prompt: str) -> str:
         payload = {
-            "model": self.model,
+            "model": get_config()["local"]["model"],
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.0, "top_p": 0.9, "stop": ["```"]},
@@ -165,6 +226,12 @@ class SerbianABSA:
         return aspects
 
     def _llama_absa(self, sentence_text: str, aspects: Sequence[str]) -> Tuple[str, Optional[Dict[str, Any]]]:
+        cfg = get_config()
+        if cfg["mode"] == "remote":
+            return self._llama_absa_remote(sentence_text, aspects, cfg)
+        return self._llama_absa_local(sentence_text, aspects)
+
+    def _llama_absa_local(self, sentence_text: str, aspects: Sequence[str]) -> Tuple[str, Optional[Dict[str, Any]]]:
         prompt = f"""
 Vrati ISKLJUČIVO validan JSON. Ne koristi markdown, ne koristi ``` i ne dodaj objašnjenja.
 
@@ -189,6 +256,26 @@ Aspekti (tačno ovako):
 """.strip()
         raw = self._ollama_generate(prompt)
         data = self._extract_json(raw)
+        return raw, data
+
+    def _llama_absa_remote(self, sentence_text: str, aspects: Sequence[str], cfg: dict) -> Tuple[str, Optional[Dict[str, Any]]]:
+        r_cfg = cfg["remote"]
+        client = get_openai_client(r_cfg["base_url"], r_cfg["api_key"])
+        print(f"[VLLM-CALL] task=absa mode={cfg['mode']} url={r_cfg['base_url']}", flush=True)
+        user_msg = (
+            f"Rečenica:\n{sentence_text}\n\n"
+            f"Aspekti (tačno ovako):\n{json.dumps(list(aspects), ensure_ascii=False)}"
+        )
+        r = client.chat.completions.create(
+            model=r_cfg["model"],
+            messages=[{"role": "system", "content": _ABSA_SYSTEM},
+                      {"role": "user",   "content": user_msg}],
+            temperature=0.0,
+            max_tokens=800,
+        )
+        raw = _THINK_RE.sub('', r.choices[0].message.content or "").strip()
+        parsed = parse_absa_smart(raw)
+        data = parsed[0] if parsed else None
         return raw, data
 
     def analyze(self, text: str) -> List[Dict[str, Any]]:

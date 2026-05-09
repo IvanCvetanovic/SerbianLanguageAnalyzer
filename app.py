@@ -1,6 +1,8 @@
 import os
 import uuid
 import random
+import logging
+import requests
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -22,8 +24,11 @@ from app_modules.grammar_corrector import correct_sentence as grammar_correct_se
 from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
 from app_modules.srl_extractor import SerbianSRLExtractor
 from app_modules.pipeline import get_nlp
+from app_modules.model_config import get_config, save_config, get_backend_description
 
 import pyvis
+
+_log = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -45,6 +50,8 @@ visualizer          = Visualizer()
 sentiment_analyzer  = SerbianSentimentAnalyzer()
 absa_analyzer       = SerbianABSA()
 srl_extractor       = SerbianSRLExtractor(pipeline=get_nlp())
+
+print(get_backend_description())
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -116,6 +123,7 @@ def run_analysis(input_text, features, job_id: str):
             try:
                 result["grammar_suggestion"] = grammar_correct_sentence(input_text)
             except Exception as e:
+                _log.exception("grammar correction failed")
                 result["grammar_suggestion"] = None
                 result["grammar_error"] = str(e)
             _set_section(job_id, "grammar", {
@@ -132,11 +140,14 @@ def run_analysis(input_text, features, job_id: str):
             _report(job_id, 15, "Translating sentence")
             try:
                 result["translated_sentence"] = WordController.translate_to_english(input_text, translator)
-            except Exception:
+            except Exception as e:
+                _log.exception("translation failed")
                 result["translated_sentence"] = SAFE_DEFAULT
+                result["translation_error"] = str(e)
             _set_section(job_id, "input", {
                 "original_input": input_text,
                 "translated_sentence": result["translated_sentence"],
+                "translation_error": result.get("translation_error"),
             })
 
         _report(job_id, 20, "Sentiment analysis")
@@ -162,12 +173,15 @@ def run_analysis(input_text, features, job_id: str):
                 }
                 for s, r in zip(sentences, analysis.sentences)
             ]
-        except Exception:
+        except Exception as e:
+            _log.exception("sentiment analysis failed")
             result["sentiment"] = None
             result["sentence_sentiments"] = []
+            result["sentiment_error"] = str(e)
         _set_section(job_id, "sentiment", {
             "sentiment": result["sentiment"],
             "sentence_sentiments": result["sentence_sentiments"],
+            "sentiment_error": result.get("sentiment_error"),
         })
 
         _report(job_id, 25, "Hate speech detection")
@@ -191,30 +205,46 @@ def run_analysis(input_text, features, job_id: str):
                     "score": raw["score"],
                 })
             result["hate_speech"] = {"overall": overall_hate, "sentences": sentence_hate}
-        except Exception:
+        except Exception as e:
+            _log.exception("hate speech detection failed")
             result["hate_speech"] = None
-        _set_section(job_id, "hate_speech", {"hate_speech": result["hate_speech"]})
+            result["hate_speech_error"] = str(e)
+        _set_section(job_id, "hate_speech", {
+            "hate_speech": result["hate_speech"],
+            "hate_speech_error": result.get("hate_speech_error"),
+        })
 
         _report(job_id, 30, "Aspect-based sentiment analysis")
         try:
             result["absa"] = absa_analyzer.analyze(input_text)
-        except Exception:
+        except Exception as e:
+            _log.exception("ABSA failed")
             result["absa"] = None
-        _set_section(job_id, "absa", {"absa": result["absa"]})
+            result["absa_error"] = str(e)
+        _set_section(job_id, "absa", {
+            "absa": result["absa"],
+            "absa_error": result.get("absa_error"),
+        })
 
         if "summaries" in features:
             _report(job_id, 35, "Summarizing")
             try:
                 result["extractive_summary"] = extractive_summary(input_text, num_sentences=2)
-            except Exception:
+            except Exception as e:
+                _log.exception("extractive summary failed")
                 result["extractive_summary"] = []
+                result["extractive_summary_error"] = str(e)
             try:
                 result["abstractive_summary"] = abstractive_summary(input_text, translator)
-            except Exception:
+            except Exception as e:
+                _log.exception("abstractive summary failed")
                 result["abstractive_summary"] = None
+                result["abstractive_summary_error"] = str(e)
             _set_section(job_id, "summaries", {
                 "extractive_summary": result["extractive_summary"],
                 "abstractive_summary": result["abstractive_summary"],
+                "extractive_summary_error": result.get("extractive_summary_error"),
+                "abstractive_summary_error": result.get("abstractive_summary_error"),
             })
 
         if "topic" in features:
@@ -517,6 +547,54 @@ def analyze_voice():
             tmp_path.unlink(missing_ok=True)
         except Exception:
             pass
+
+@app.route("/api/settings", methods=["GET"])
+def api_get_settings():
+    return jsonify(get_config())
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_save_settings():
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid request body"}), 400
+    if data.get("mode") not in ("local", "remote"):
+        return jsonify({"error": "mode must be 'local' or 'remote'"}), 400
+    cfg = get_config()
+    cfg["mode"] = data["mode"]
+    if isinstance(data.get("local"), dict):
+        if "model" in data["local"]:
+            cfg["local"]["model"] = str(data["local"]["model"]).strip()
+    if isinstance(data.get("remote"), dict):
+        for k in ("base_url", "model", "api_key"):
+            if k in data["remote"]:
+                cfg["remote"][k] = str(data["remote"][k]).strip()
+    save_config(cfg)
+    return jsonify({"ok": True, "config": cfg})
+
+
+@app.route("/api/test-connection", methods=["POST"])
+def api_test_connection():
+    data = request.get_json(force=True) or {}
+    mode = data.get("mode") or get_config()["mode"]
+    if mode == "local":
+        try:
+            r = requests.get("http://localhost:11434/api/tags", timeout=5)
+            r.raise_for_status()
+            return jsonify({"ok": True, "message": "Ollama is reachable."})
+        except Exception as e:
+            return jsonify({"ok": False, "message": f"Ollama not reachable: {e}"})
+    else:
+        base_url = str(data.get("base_url") or get_config()["remote"]["base_url"]).rstrip("/")
+        api_key  = str(data.get("api_key")  or get_config()["remote"]["api_key"])
+        try:
+            headers = {} if api_key == "not-needed" else {"Authorization": f"Bearer {api_key}"}
+            r = requests.get(f"{base_url}/models", headers=headers, timeout=10)
+            r.raise_for_status()
+            return jsonify({"ok": True, "message": "Remote endpoint is reachable."})
+        except Exception as e:
+            return jsonify({"ok": False, "message": f"Remote not reachable: {e}"})
+
 
 if __name__ == "__main__":
     app.run(debug=False)

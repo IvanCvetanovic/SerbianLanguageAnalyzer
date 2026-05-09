@@ -27,6 +27,9 @@ PROTECTED_LABELS = {
     "disability",
 }
 
+# Kept for documentation; the strict per-label thresholds were too
+# aggressive (flagged "appropriate" wins as Abusive). We now trust the
+# top label directly.
 LABEL_THRESHOLDS: Dict[str, float] = {lbl: 0.35 for lbl in PROTECTED_LABELS}
 A_APPROPRIATE: float = 0.70
 MIN_PROTECTED_SIGNAL_FOR_LOW_APPROPRIATE: float = 0.20
@@ -80,28 +83,10 @@ def _classify_policy(probs: List[float], labels: List[str]) -> Dict:
     protected_scores: List[Tuple[str, float]] = [(lbl, score_map[lbl]) for lbl in PROTECTED_LABELS]
     max_protected_label, max_protected_score = max(protected_scores, key=lambda x: x[1])
 
-    crossed: List[Tuple[str, float, float]] = []
-    for lbl, s in protected_scores:
-        thr = LABEL_THRESHOLDS[lbl]
-        if s >= thr:
-            crossed.append((lbl, s, thr))
-
+    flagged_model = (best_label != "appropriate")
     reasons: List[str] = []
-    if crossed:
-        for lbl, s, thr in crossed:
-            reasons.append(f"model: {lbl} >= {thr:.2f} ({s:.3f})")
-        flagged_model = True
-    else:
-        flagged_model = (
-            appropriate_score <= A_APPROPRIATE
-            and max_protected_score >= MIN_PROTECTED_SIGNAL_FOR_LOW_APPROPRIATE
-        )
-        if flagged_model:
-            reasons.append(
-                f"model: appropriate <= {A_APPROPRIATE:.2f} AND "
-                f"max(protected) >= {MIN_PROTECTED_SIGNAL_FOR_LOW_APPROPRIATE:.2f} "
-                f"({max_protected_label}={max_protected_score:.3f})"
-            )
+    if flagged_model:
+        reasons.append(f"model: top label is {best_label} ({best_score:.3f})")
 
     return {
         "best_label": best_label,

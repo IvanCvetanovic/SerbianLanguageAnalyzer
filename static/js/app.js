@@ -161,8 +161,8 @@ function renderHateSpeech(data) {
   let html = '<div class="summary card-red" style="margin:0; height:100%; box-sizing:border-box;"><h2>Hate / Abuse Detection</h2>';
   if (hs.overall) {
     html += `<p><strong>Status:</strong> ${hs.overall.flagged
-      ? '<span style="color:#b00020;">🚩 Abusive / Problematic</span>'
-      : '<span style="color:#2e7d32;">✅ Not Abusive</span>'}</p>
+      ? '<span class="text-danger">🚩 Abusive / Problematic</span>'
+      : '<span class="text-success">✅ Not Abusive</span>'}</p>
       <p><strong>Top label:</strong> ${escHtml(hs.overall.label)} (${hs.overall.score.toFixed(3)})</p><ul>`;
     for (const [lbl, score] of Object.entries(hs.overall.scores)) {
       html += `<li>${escHtml(lbl)}: ${score.toFixed(3)}</li>`;
@@ -176,8 +176,8 @@ function renderHateSpeech(data) {
         <div><strong>Sentence:</strong> ${escHtml(item.sentence)}</div>
         <div><strong>${escHtml(item.label)}</strong> (${item.score.toFixed(3)})
         ${item.flagged
-          ? '<span style="color:#b00020;">🚩</span>'
-          : '<span style="color:#2e7d32;">✅</span>'}</div>
+          ? '<span class="text-danger">🚩</span>'
+          : '<span class="text-success">✅</span>'}</div>
       </li>`;
     }
     html += '</ul>';
@@ -196,17 +196,16 @@ function renderAbsa(data) {
         <th>Aspect</th><th>Sentiment</th><th>Confidence</th><th>Evidence</th>
       </tr></thead><tbody>`;
       for (const a of sent.aspects) {
-        const c = a.sentiment === 'positive' ? '#2e7d32' : a.sentiment === 'negative' ? '#b00020' : '#616161';
         html += `<tr>
-          <td>${escHtml(a.aspect)}${a.aspect_en ? `<div style="color:#666;font-size:.9em;">${escHtml(a.aspect_en)}</div>` : ''}</td>
-          <td><span style="color:${c}">${escHtml(a.sentiment)}</span></td>
+          <td>${escHtml(a.aspect)}${a.aspect_en ? `<div class="secondary-label">${escHtml(a.aspect_en)}</div>` : ''}</td>
+          <td><span class="sentiment-${a.sentiment}">${escHtml(a.sentiment)}</span></td>
           <td>${a.confidence.toFixed(2)}</td>
-          <td>${escHtml(a.evidence)}${a.evidence_en ? `<div style="color:#666;font-size:.9em;">${escHtml(a.evidence_en)}</div>` : ''}</td>
+          <td>${escHtml(a.evidence)}${a.evidence_en ? `<div class="secondary-label">${escHtml(a.evidence_en)}</div>` : ''}</td>
         </tr>`;
       }
       html += '</tbody></table>';
     } else {
-      html += '<p style="color:#777;">No aspects detected.</p>';
+      html += '<p class="text-muted">No aspects detected.</p>';
     }
     html += '</div>';
   }
@@ -218,13 +217,13 @@ function renderSrl(data) {
   if (!data.srl?.length) return;
   let html = '<div class="summary card-blue" style="width:100%; margin:0;"><h2>Semantic Role Labeling (SRL)</h2>';
   for (const item of data.srl) {
-    html += `<div style="margin-bottom:18px;padding-top:10px;border-top:1px solid #e0e0e0;">
+    html += `<div class="srl-sentence">
       <p style="margin:0 0 8px 0;"><strong>Sentence:</strong> ${escHtml(item.sentence)}</p>`;
     if (item.frames?.length) {
       for (const fr of item.frames) {
-        html += `<div style="margin:10px 0 14px 0;padding:10px;background:#fafafa;border:1px solid #eee;border-radius:8px;">
+        html += `<div class="srl-frame">
           <div style="margin-bottom:8px;"><strong>Predicate:</strong> ${escHtml(fr.predicate)}
-          <span style="color:#666;">(lemma: ${escHtml(fr.predicate_lemma)}, idx: ${fr.predicate_index},
+          <span class="text-muted">(lemma: ${escHtml(fr.predicate_lemma)}, idx: ${fr.predicate_index},
           negated: ${fr.negated ? 'true' : 'false'})</span></div>`;
         if (fr.roles && Object.keys(fr.roles).length) {
           html += '<table style="margin:0;"><thead><tr><th style="width:220px;">Role</th><th>Spans</th></tr></thead><tbody>';
@@ -234,12 +233,12 @@ function renderSrl(data) {
           }
           html += '</tbody></table>';
         } else {
-          html += '<p style="margin:0;color:#777;">No roles found for this predicate.</p>';
+          html += '<p class="text-muted" style="margin:0;">No roles found for this predicate.</p>';
         }
         html += '</div>';
       }
     } else {
-      html += '<p style="color:#777;margin:0;">No SRL frames found.</p>';
+      html += '<p class="text-muted" style="margin:0;">No SRL frames found.</p>';
     }
     html += '</div>';
   }
@@ -462,3 +461,151 @@ if (window.currentJobId) {
       });
   }, 800);
 }
+
+// ─── Settings modal ───────────────────────────────────────────────────────────
+const settingsBtn     = document.getElementById('settings-btn');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsClose   = document.getElementById('settings-close');
+const settingsSave    = document.getElementById('settings-save');
+const settingsTest    = document.getElementById('settings-test');
+const settingsStatus  = document.getElementById('settings-status');
+const localFields         = document.getElementById('local-fields');
+const localModelSelect    = document.getElementById('local-model');
+const localModelRefresh   = document.getElementById('local-model-refresh');
+const remoteFields        = document.getElementById('remote-fields');
+const modeLocal           = document.getElementById('mode-local');
+const modeRemote          = document.getElementById('mode-remote');
+const remoteUrl           = document.getElementById('remote-url');
+const remoteModel         = document.getElementById('remote-model');
+const remoteKey           = document.getElementById('remote-key');
+
+function showSettingsStatus(msg, ok) {
+  settingsStatus.textContent = msg;
+  settingsStatus.style.background = ok ? '#e8f5e9' : '#ffebee';
+  settingsStatus.style.color      = ok ? '#2e7d32' : '#b00020';
+  settingsStatus.style.border     = ok ? '1px solid #a5d6a7' : '1px solid #ef9a9a';
+  settingsStatus.style.display    = 'block';
+}
+
+function syncModeFields() {
+  const isRemote = modeRemote.checked;
+  remoteFields.style.display = isRemote ? '' : 'none';
+  localFields.style.display  = isRemote ? 'none' : '';
+}
+
+modeLocal.addEventListener('change', syncModeFields);
+modeRemote.addEventListener('change', syncModeFields);
+
+function fetchOllamaModels(selectValue) {
+  fetch('http://localhost:11434/api/tags')
+    .then(r => r.json())
+    .then(data => {
+      const models = (data.models || []).map(m => m.name).filter(Boolean);
+      if (!models.length) return;
+      localModelSelect.innerHTML = '';
+      models.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === selectValue) opt.selected = true;
+        localModelSelect.appendChild(opt);
+      });
+      if (selectValue && !models.includes(selectValue)) {
+        const opt = document.createElement('option');
+        opt.value = selectValue;
+        opt.textContent = selectValue;
+        opt.selected = true;
+        localModelSelect.insertBefore(opt, localModelSelect.firstChild);
+      }
+    })
+    .catch(() => {});
+}
+
+localModelRefresh.addEventListener('click', () => fetchOllamaModels(localModelSelect.value));
+
+function openSettings() {
+  settingsStatus.style.display = 'none';
+  fetch('/api/settings')
+    .then(r => r.json())
+    .then(cfg => {
+      (cfg.mode === 'remote' ? modeRemote : modeLocal).checked = true;
+      syncModeFields();
+      const savedLocalModel = cfg.local?.model || 'llama3.1:8b';
+      localModelSelect.value = savedLocalModel;
+      fetchOllamaModels(savedLocalModel);
+      if (cfg.remote) {
+        remoteUrl.value   = cfg.remote.base_url || '';
+        remoteModel.value = cfg.remote.model    || '';
+        remoteKey.value   = cfg.remote.api_key  || '';
+      }
+    })
+    .catch(() => { modeLocal.checked = true; syncModeFields(); })
+    .finally(() => { settingsOverlay.style.display = 'flex'; });
+}
+
+function closeSettings() {
+  settingsOverlay.style.display = 'none';
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) closeSettings(); });
+
+settingsSave.addEventListener('click', () => {
+  const payload = {
+    mode: modeRemote.checked ? 'remote' : 'local',
+    local: {
+      model: localModelSelect.value.trim(),
+    },
+    remote: {
+      base_url: remoteUrl.value.trim(),
+      model:    remoteModel.value.trim(),
+      api_key:  remoteKey.value.trim(),
+    },
+  };
+  settingsSave.disabled = true;
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(d => showSettingsStatus(d.ok ? 'Settings saved.' : 'Error: ' + (d.error || '?'), d.ok))
+    .catch(() => showSettingsStatus('Failed to save settings.', false))
+    .finally(() => { settingsSave.disabled = false; });
+});
+
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
+const themeToggle = document.getElementById('theme-toggle');
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  themeToggle.textContent = dark ? '☀️ Light' : '🌙 Dark';
+}
+
+applyTheme(document.documentElement.getAttribute('data-theme') === 'dark');
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  applyTheme(!isDark);
+});
+
+settingsTest.addEventListener('click', () => {
+  const payload = {
+    mode:     modeRemote.checked ? 'remote' : 'local',
+    base_url: remoteUrl.value.trim(),
+    api_key:  remoteKey.value.trim(),
+  };
+  settingsTest.disabled = true;
+  settingsTest.textContent = 'Testing…';
+  fetch('/api/test-connection', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(d => showSettingsStatus(d.message, d.ok))
+    .catch(() => showSettingsStatus('Connection test failed.', false))
+    .finally(() => { settingsTest.disabled = false; settingsTest.textContent = 'Test connection'; });
+});

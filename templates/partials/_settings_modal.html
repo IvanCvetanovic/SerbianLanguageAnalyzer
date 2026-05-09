@@ -1,0 +1,98 @@
+<div id="settings-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);
+            z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-modal);border-radius:12px;padding:32px;width:min(480px,92vw);
+              box-shadow:0 8px 40px rgba(0,0,0,0.28);position:relative;">
+
+    <button id="settings-close"
+            style="position:absolute;top:12px;right:16px;background:none;border:none;
+                   font-size:1.4rem;cursor:pointer;color:var(--text-stage);line-height:1;">&#10005;</button>
+
+    <h2 style="margin:0 0 6px 0;color:#1565c0;">Model Backend Settings</h2>
+    <p style="margin:0 0 20px 0;font-size:.88rem;color:var(--text-muted);">
+      Changes take effect immediately after saving — no restart required.
+    </p>
+
+    <div id="settings-status"
+         style="display:none;padding:10px 14px;border-radius:6px;
+                margin-bottom:16px;font-size:.9rem;"></div>
+
+    <!-- Mode selector -->
+    <div style="margin-bottom:20px;">
+      <label style="font-weight:600;display:block;margin-bottom:10px;">Mode</label>
+      <div style="display:flex;gap:20px;">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:normal;">
+          <input type="radio" name="backend-mode" value="local" id="mode-local">
+          Local&nbsp;(Ollama)
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:normal;">
+          <input type="radio" name="backend-mode" value="remote" id="mode-remote">
+          Remote&nbsp;(OpenAI-compatible)
+        </label>
+      </div>
+    </div>
+
+    <!-- Local-only fields -->
+    <div id="local-fields">
+      <div style="margin-bottom:20px;">
+        <label style="font-weight:600;display:block;margin-bottom:4px;">
+          Local Model
+          <button type="button" id="local-model-refresh"
+                  style="margin-left:8px;font-size:.78rem;padding:2px 8px;border:1px solid var(--border);
+                         border-radius:4px;cursor:pointer;background:var(--bg-card);color:var(--text-stage);
+                         vertical-align:middle;">Refresh</button>
+        </label>
+        <select id="local-model"
+                style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);
+                       border-radius:6px;font-size:.95rem;background:var(--bg-input);color:var(--text);">
+          <option value="llama3.1:8b">llama3.1:8b</option>
+        </select>
+        <p style="margin:4px 0 0 0;font-size:.82rem;color:var(--text-muted);">Models available in Ollama.</p>
+      </div>
+    </div>
+
+    <!-- Remote-only fields -->
+    <div id="remote-fields" style="display:none;">
+      <div style="margin-bottom:14px;">
+        <label for="remote-url"
+               style="font-weight:600;display:block;margin-bottom:4px;">Base URL</label>
+        <input type="text" id="remote-url"
+               style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);
+                      border-radius:6px;font-size:.95rem;"
+               placeholder="http://localhost:8000/v1">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label for="remote-model"
+               style="font-weight:600;display:block;margin-bottom:4px;">Model Name</label>
+        <input type="text" id="remote-model"
+               style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);
+                      border-radius:6px;font-size:.95rem;"
+               placeholder="fulltune_14b_v3">
+      </div>
+      <div style="margin-bottom:22px;">
+        <label for="remote-key"
+               style="font-weight:600;display:block;margin-bottom:4px;">
+          API Key <span style="font-weight:normal;color:var(--text-dim);">(optional)</span>
+        </label>
+        <input type="text" id="remote-key"
+               style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);
+                      border-radius:6px;font-size:.95rem;"
+               placeholder="not-needed">
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button type="button" id="settings-save"
+              style="background:#1565c0;color:#fff;border:none;border-radius:6px;
+                     padding:9px 22px;font-size:.95rem;cursor:pointer;font-weight:600;">
+        Save
+      </button>
+      <button type="button" id="settings-test"
+              style="background:var(--bg-modal);color:#1565c0;border:2px solid #1565c0;border-radius:6px;
+                     padding:9px 22px;font-size:.95rem;cursor:pointer;font-weight:600;">
+        Test connection
+      </button>
+    </div>
+  </div>
+</div>

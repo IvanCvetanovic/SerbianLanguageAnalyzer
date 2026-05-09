@@ -13,9 +13,27 @@
   {% include "partials/_loader.html" %}
 
   <header>
-    <h1>Text Analyzer for Serbian Language</h1>
-    <p>Grammar &bull; Sentiment &bull; Hate Speech &bull; ABSA &bull; SRL &bull; Summaries &bull; Topics &bull; Visualizations</p>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <h1>Text Analyzer for Serbian Language</h1>
+        <p>Grammar &bull; Sentiment &bull; Hate Speech &bull; ABSA &bull; SRL &bull; Summaries &bull; Topics &bull; Visualizations</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;flex-wrap:wrap;">
+        <button type="button" id="theme-toggle"
+                style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);
+                       border-radius:8px;padding:8px 18px;font-size:.9rem;cursor:pointer;font-weight:600;
+                       white-space:nowrap;">
+          &#127769; Dark
+        </button>
+        <button type="button" id="settings-btn"
+                style="background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 18px;
+                       font-size:.9rem;cursor:pointer;font-weight:600;white-space:nowrap;">
+          &#9881; Settings
+        </button>
+      </div>
+    </div>
   </header>
+  {% include "partials/_settings_modal.html" %}
 
   <div class="container">
     {% if error_message %}

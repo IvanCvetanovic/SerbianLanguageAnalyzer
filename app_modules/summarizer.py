@@ -3,9 +3,11 @@ import numpy as np
 import networkx as nx
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
+from app_modules.model_config import get_config, get_openai_client
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-LLAMA_MODEL = "llama3.1:8b"
+
+_THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 
 _LAT_TO_CYR = {
     "dž": "џ", "Dž": "Џ", "DŽ": "Џ",
@@ -64,7 +66,7 @@ def extractive_summary(text: str, num_sentences: int = 2) -> list[str]:
 
 def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
     payload = {
-        "model": LLAMA_MODEL,
+        "model": get_config()["local"]["model"],
         "prompt": prompt,
         "stream": False,
         "options": {"temperature": temperature},
@@ -73,17 +75,42 @@ def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
     r.raise_for_status()
     return r.json().get("response", "").strip()
 
+def _vllm_generate(system: str, user: str, cfg: dict,
+                   temperature: float = 0.3, max_tokens: int = 300) -> str:
+    r_cfg = cfg["remote"]
+    client = get_openai_client(r_cfg["base_url"], r_cfg["api_key"])
+    print(f"[VLLM-CALL] task=summarization mode={cfg['mode']} url={r_cfg['base_url']}", flush=True)
+    r = client.chat.completions.create(
+        model=r_cfg["model"],
+        messages=[{"role": "system", "content": system},
+                  {"role": "user",   "content": user}],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    text = r.choices[0].message.content or ""
+    return _THINK_RE.sub('', text).strip()
+
 def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int = 30, num_beams: int = 4) -> tuple[str, str]:
     is_latin = bool(re.search(r"[A-Za-z]", text))
     text_cyr = transliterate_to_cyrillic(text) if is_latin else text
-    prompt = (
-        "Sumiraj sledeći tekst na srpskom jeziku.\n"
-        "Vrati samo sažetak, bez objašnjenja.\n"
-        f"Sažetak neka bude između {min_len} i {max_len} reči.\n\n"
-        f"Tekst:\n{text_cyr}\n\n"
-        "Sažetak:"
-    )
-    summary = _ollama_generate(prompt, temperature=0.2)
+    cfg = get_config()
+    if cfg["mode"] == "remote":
+        summary = _vllm_generate(
+            system="Sažmi sledeći tekst u nekoliko rečenica.",
+            user=text_cyr,
+            cfg=cfg,
+            temperature=0.3,
+            max_tokens=300,
+        )
+    else:
+        prompt = (
+            "Sumiraj sledeći tekst na srpskom jeziku.\n"
+            "Vrati samo sažetak, bez objašnjenja.\n"
+            f"Sažetak neka bude između {min_len} i {max_len} reči.\n\n"
+            f"Tekst:\n{text_cyr}\n\n"
+            "Sažetak:"
+        )
+        summary = _ollama_generate(prompt, temperature=0.2)
     summary_latin = transliterate_to_latin(summary) if is_latin else summary
     translation = translator.translate(summary_latin, dest="en").text
     return summary_latin, translation
