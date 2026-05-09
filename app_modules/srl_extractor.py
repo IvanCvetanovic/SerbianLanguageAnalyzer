@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from app_modules.pipeline import get_nlp
-from app_modules.model_config import get_config
+from app_modules.model_config import get_config, OLLAMA_URL
 
 
 ROLE_SET = [
@@ -308,22 +308,13 @@ def enrich_with_classla(sentence: str, frames: List[Dict[str, Any]], tokens: Opt
 class SerbianSRLExtractor:
     def __init__(
         self,
-        ollama_url: Optional[str] = None,
-        model: Optional[str] = None,
         use_classla: Optional[bool] = None,
         pipeline=None,
         timeout_s: int = 60,
     ):
-        # Ollama config (YOU WERE MISSING THESE)
-        self.ollama_url = ollama_url or os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-        self.model = model or os.getenv("OLLAMA_MODEL", "llama3.1:8b")
-
         self.use_classla = (os.getenv("USE_CLASSLA_SRL", "1").strip() == "1") if use_classla is None else bool(use_classla)
         self.timeout_s = int(timeout_s)
-
-        # Reuse shared classla pipeline
         self._nlp = pipeline if pipeline is not None else (get_nlp() if self.use_classla else None)
-
         self._session = requests.Session()
 
     def _sent_to_tokens(self, sent) -> List[Token]:
@@ -368,7 +359,7 @@ class SerbianSRLExtractor:
             "stream": False,
             "options": {"temperature": 0.0},
         }
-        r = self._session.post(self.ollama_url, json=payload, timeout=self.timeout_s)
+        r = self._session.post(OLLAMA_URL, json=payload, timeout=self.timeout_s)
         r.raise_for_status()
         data = r.json()
         return (data.get("response") or "").strip()

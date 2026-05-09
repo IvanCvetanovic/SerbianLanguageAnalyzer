@@ -1,8 +1,6 @@
 import re
 import requests
-from app_modules.model_config import get_config, get_openai_client
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
+from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
 
 _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 

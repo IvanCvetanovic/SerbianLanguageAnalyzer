@@ -1,10 +1,10 @@
 from pathlib import Path
-from cyrtranslit import to_latin, to_cyrillic
 import csv
 import urllib.parse
 import re
 
 from app_modules.pipeline import get_nlp
+from app_modules.transliteration import cyr_to_lat, words_to_latin, words_to_cyrillic
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _DEFAULT_WORDNET_CSV = str(_DATA_DIR / "Serbian-Wordnet.csv")
@@ -59,11 +59,11 @@ class WordController:
 
     @staticmethod
     def transliterate_latin_to_cyrillic(words):
-        return [to_cyrillic(word, "sr") for word in words]
+        return words_to_cyrillic(words)
 
     @staticmethod
     def transliterate_cyrillic_to_latin(words):
-        return [to_latin(word, "sr") for word in words]
+        return words_to_latin(words)
 
     _WORDNET_LATIN_CACHE = {}
 
@@ -82,7 +82,7 @@ class WordController:
                 if not word_cyr:
                     continue
 
-                word_lat = to_latin(word_cyr, "sr").lower()
+                word_lat = cyr_to_lat(word_cyr).lower()
                 known.add(word_lat)
 
         WordController._WORDNET_LATIN_CACHE[csv_file_path] = known
@@ -130,7 +130,7 @@ class WordController:
                 results.append(safe_default)
                 continue
 
-            w_latin = to_latin(w, "sr").lower()
+            w_latin = cyr_to_lat(w).lower()
             w_clean = allowed.sub(" ", w_latin).strip()
             if not w_clean:
                 results.append(safe_default)

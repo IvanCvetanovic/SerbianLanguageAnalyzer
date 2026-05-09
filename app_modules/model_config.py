@@ -6,6 +6,8 @@ from openai import OpenAI
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
+OLLAMA_URL = "http://localhost:11434/api/generate"
+
 _DEFAULTS: dict = {
     "mode": "local",
     "whisper_model": "medium",

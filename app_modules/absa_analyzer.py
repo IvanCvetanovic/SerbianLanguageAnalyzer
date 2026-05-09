@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
-from app_modules.model_config import get_config, get_openai_client
+from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
 
 from app_modules.pipeline import get_nlp
 
@@ -80,14 +80,7 @@ class ABSASpan:
     evidence: str
 
 class SerbianABSA:
-    def __init__(
-        self,
-        ollama_url: str = "http://localhost:11434/api/generate",
-        model: str = "llama3.1:8b",
-        timeout_s: int = 180,
-    ) -> None:
-        self.ollama_url = ollama_url
-        self.model = model
+    def __init__(self, timeout_s: int = 180) -> None:
         self.timeout_s = int(timeout_s)
 
         # Keep lock: classla pipeline isn't guaranteed thread-safe
@@ -124,10 +117,10 @@ class SerbianABSA:
             "options": {"temperature": 0.0, "top_p": 0.9, "stop": ["```"]},
         }
         try:
-            r = requests.post(self.ollama_url, json=payload, timeout=(5, self.timeout_s))
+            r = requests.post(OLLAMA_URL, json=payload, timeout=(5, self.timeout_s))
         except requests.exceptions.ConnectionError:
             raise RuntimeError(
-                f"Ollama is not running or not reachable at {self.ollama_url}. "
+                f"Ollama is not running or not reachable at {OLLAMA_URL}. "
                 "Start Ollama before using ABSA features."
             )
         r.raise_for_status()

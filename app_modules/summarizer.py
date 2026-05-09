@@ -3,35 +3,11 @@ import numpy as np
 import networkx as nx
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
-from app_modules.model_config import get_config, get_openai_client
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
+from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
+from app_modules.transliteration import lat_to_cyr, cyr_to_lat
 
 _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 
-_LAT_TO_CYR = {
-    "dž": "џ", "Dž": "Џ", "DŽ": "Џ",
-    "lj": "љ", "Lj": "Љ", "LJ": "Љ",
-    "nj": "њ", "Nj": "Њ", "NJ": "Њ",
-    "a": "а", "A": "А", "b": "б", "B": "Б", "c": "ц", "C": "Ц",
-    "č": "ч", "Č": "Ч", "ć": "ћ", "Ć": "Ћ", "d": "д", "D": "Д",
-    "đ": "ђ", "Đ": "Ђ", "e": "е", "E": "Е", "f": "ф", "F": "Ф",
-    "g": "г", "G": "Г", "h": "х", "H": "Х", "i": "и", "I": "И",
-    "j": "ј", "J": "Ј", "k": "к", "K": "К", "l": "л", "L": "Л",
-    "m": "м", "M": "М", "n": "н", "N": "Н", "o": "о", "O": "О",
-    "p": "п", "P": "П", "r": "р", "R": "Р", "s": "с", "S": "С",
-    "š": "ш", "Š": "Ш", "t": "т", "T": "Т", "u": "у", "U": "У",
-    "v": "в", "V": "В", "z": "з", "Z": "З", "ž": "ж", "Ž": "Ж",
-}
-_CYR_TO_LAT = {v: k for k, v in _LAT_TO_CYR.items()}
-_lat_pattern = re.compile("|".join(sorted(_LAT_TO_CYR.keys(), key=len, reverse=True)))
-_cyr_pattern = re.compile("|".join(sorted(_CYR_TO_LAT.keys(), key=len, reverse=True)))
-
-def transliterate_to_cyrillic(text: str) -> str:
-    return _lat_pattern.sub(lambda m: _LAT_TO_CYR[m.group(0)], text)
-
-def transliterate_to_latin(text: str) -> str:
-    return _cyr_pattern.sub(lambda m: _CYR_TO_LAT[m.group(0)], text)
 
 def split_sentences(text: str) -> list[str]:
     if not text:
@@ -43,8 +19,8 @@ def split_sentences(text: str) -> list[str]:
         tmp = tmp.replace(a, a.replace(".", PH))
     pattern = r'(?<=[\.!?])\s+(?=(?:[A-ZŠĐČĆŽ]|[А-ЯЉЊЏЋЂ]))'
     parts = re.split(pattern, tmp.strip())
-    sents = [p.replace(PH, ".").strip() for p in parts if p.strip()]
-    return sents
+    return [p.replace(PH, ".").strip() for p in parts if p.strip()]
+
 
 def build_similarity_matrix(sentences: list[str]) -> np.ndarray:
     vec = TfidfVectorizer()
@@ -52,6 +28,7 @@ def build_similarity_matrix(sentences: list[str]) -> np.ndarray:
     sim = (tfidf * tfidf.T).toarray()
     np.fill_diagonal(sim, 0)
     return sim
+
 
 def extractive_summary(text: str, num_sentences: int = 2) -> list[str]:
     sents = split_sentences(text)
@@ -64,6 +41,7 @@ def extractive_summary(text: str, num_sentences: int = 2) -> list[str]:
     selected = sorted(ranked[:num_sentences], key=lambda x: sents.index(x[1]))
     return [s for _, s in selected]
 
+
 def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
     payload = {
         "model": get_config()["local"]["model"],
@@ -74,6 +52,7 @@ def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
     r = requests.post(OLLAMA_URL, json=payload, timeout=120)
     r.raise_for_status()
     return r.json().get("response", "").strip()
+
 
 def _vllm_generate(system: str, user: str, cfg: dict,
                    temperature: float = 0.3, max_tokens: int = 300) -> str:
@@ -87,12 +66,12 @@ def _vllm_generate(system: str, user: str, cfg: dict,
         temperature=temperature,
         max_tokens=max_tokens,
     )
-    text = r.choices[0].message.content or ""
-    return _THINK_RE.sub('', text).strip()
+    return _THINK_RE.sub('', r.choices[0].message.content or "").strip()
 
-def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int = 30, num_beams: int = 4) -> tuple[str, str]:
+
+def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int = 30) -> tuple[str, str]:
     is_latin = bool(re.search(r"[A-Za-z]", text))
-    text_cyr = transliterate_to_cyrillic(text) if is_latin else text
+    text_cyr = lat_to_cyr(text) if is_latin else text
     cfg = get_config()
     if cfg["mode"] == "remote":
         summary = _vllm_generate(
@@ -111,6 +90,6 @@ def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int =
             "Sažetak:"
         )
         summary = _ollama_generate(prompt, temperature=0.2)
-    summary_latin = transliterate_to_latin(summary) if is_latin else summary
+    summary_latin = cyr_to_lat(summary) if is_latin else summary
     translation = translator.translate(summary_latin, dest="en").text
     return summary_latin, translation

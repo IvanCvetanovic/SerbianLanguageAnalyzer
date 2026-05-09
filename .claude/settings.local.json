@@ -5,7 +5,9 @@
       "Bash(python -c ':*)",
       "Bash(python -c \"import ast; ast.parse\\(open\\('app.py',encoding='utf-8'\\).read\\(\\)\\); print\\('app.py OK'\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('app.py',encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\PrOfSeS\\\\Desktop\\\\Master Thesis Project\" -File)",
+      "Bash(Select-Object Name)"
     ]
   }
 }
