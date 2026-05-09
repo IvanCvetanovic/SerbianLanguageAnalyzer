@@ -1,3 +1,112 @@
+// ─── Grammar diff ────────────────────────────────────────────────────────────
+class GrammarDiff {
+  constructor(containerId, original, corrected) {
+    this.id        = containerId;
+    this.original  = original;
+    this.corrected = corrected;
+    this.groups    = this._buildGroups(Diff.diffWords(original, corrected));
+    // null = pending, true = accepted, false = rejected
+    this.decisions = new Array(this.groups.length).fill(null);
+  }
+
+  _buildGroups(diffs) {
+    const groups = [];
+    let i = 0;
+    while (i < diffs.length) {
+      const c = diffs[i];
+      if (!c.added && !c.removed) {
+        groups.push({ type: 'unchanged', value: c.value });
+        i++;
+      } else if (c.removed && i + 1 < diffs.length && diffs[i + 1].added) {
+        groups.push({ type: 'substitution', original: c.value, corrected: diffs[i + 1].value });
+        i += 2;
+      } else if (c.removed) {
+        groups.push({ type: 'deletion', original: c.value });
+        i++;
+      } else {
+        groups.push({ type: 'insertion', corrected: c.value });
+        i++;
+      }
+    }
+    return groups;
+  }
+
+  changesCount() { return this.groups.filter(g => g.type !== 'unchanged').length; }
+  pendingCount()  { return this.groups.filter((g, i) => g.type !== 'unchanged' && this.decisions[i] === null).length; }
+
+  accept(idx)  { if (this.groups[idx]?.type !== 'unchanged') { this.decisions[idx] = true;  this._refresh(); } }
+  reject(idx)  { if (this.groups[idx]?.type !== 'unchanged') { this.decisions[idx] = false; this._refresh(); } }
+  undo(idx)    { if (this.groups[idx]?.type !== 'unchanged') { this.decisions[idx] = null;  this._refresh(); } }
+  acceptAll()  { this.groups.forEach((g, i) => { if (g.type !== 'unchanged') this.decisions[i] = true;  }); this._refresh(); }
+  rejectAll()  { this.groups.forEach((g, i) => { if (g.type !== 'unchanged') this.decisions[i] = false; }); this._refresh(); }
+
+  getCurrentText() {
+    return this.groups.map((g, i) => {
+      const d = this.decisions[i];
+      if (g.type === 'unchanged')    return g.value;
+      if (g.type === 'substitution') return d === false ? g.original : g.corrected;
+      if (g.type === 'deletion')     return d === false ? g.original : '';
+      if (g.type === 'insertion')    return d === false ? '' : g.corrected;
+    }).join('');
+  }
+
+  renderDiff() {
+    return this.groups.map((g, i) => {
+      if (g.type === 'unchanged') return escHtml(g.value);
+      const d     = this.decisions[i];
+      const state = d === true ? 'diff-accepted' : d === false ? 'diff-rejected' : 'diff-pending';
+      const tip   = g.explanation ? ` title="${escHtml(g.explanation)}"` : '';
+      const btns  = d === null
+        ? `<span class="diff-btn-group">
+             <button class="diff-btn diff-btn-accept" data-idx="${i}" title="Accept">✓</button>
+             <button class="diff-btn diff-btn-reject" data-idx="${i}" title="Reject">✗</button>
+           </span>`
+        : `<span class="diff-btn-group">
+             <button class="diff-btn diff-btn-undo" data-idx="${i}" title="Undo">↩</button>
+           </span>`;
+
+      if (g.type === 'substitution') {
+        return `<span class="diff-change ${state}"${tip} data-idx="${i}">` +
+          `<del class="diff-del">${escHtml(g.original.trim())}</del> ` +
+          `<ins class="diff-ins">${escHtml(g.corrected.trim())}</ins>${btns}</span> `;
+      }
+      if (g.type === 'deletion') {
+        return `<span class="diff-change ${state}"${tip} data-idx="${i}">` +
+          `<del class="diff-del">${escHtml(g.original.trim())}</del>${btns}</span> `;
+      }
+      // insertion
+      return `<span class="diff-change ${state}"${tip} data-idx="${i}">` +
+        `<ins class="diff-ins">${escHtml(g.corrected.trim())}</ins>${btns}</span> `;
+    }).join('');
+  }
+
+  setExplanations(changes) {
+    for (const c of changes) {
+      const key = `${(c.original||'').trim()}||${(c.corrected||'').trim()}`;
+      for (const g of this.groups) {
+        if (g.type === 'substitution'
+            && `${g.original.trim()}||${g.corrected.trim()}` === key) {
+          g.explanation = c.explanation;
+        } else if (g.type === 'deletion' && `${g.original.trim()}||` === key) {
+          g.explanation = c.explanation;
+        } else if (g.type === 'insertion' && `||${g.corrected.trim()}` === key) {
+          g.explanation = c.explanation;
+        }
+      }
+    }
+    this._refresh();
+  }
+
+  _refresh() {
+    const diffEl = document.getElementById(this.id + '-diff');
+    if (diffEl) diffEl.innerHTML = this.renderDiff();
+    const curEl = document.getElementById(this.id + '-current');
+    if (curEl) curEl.textContent = this.getCurrentText().trim();
+    const pendEl = document.getElementById(this.id + '-pending');
+    if (pendEl) pendEl.textContent = this.pendingCount();
+  }
+}
+
 // ─── DOM refs ───────────────────────────────────────────────────────────────
 const downloadBtnWrapper = document.getElementById('download-btn-wrapper');
 const downloadPdfBtn     = document.getElementById('download-pdf-btn');
@@ -115,18 +224,95 @@ function renderGrammar(data) {
     hideEl(document.getElementById('section-grammar'));
     return;
   }
-  const html = `<div class="summary card-teal" style="margin:0; height:100%; box-sizing:border-box;">
-    <h2>Grammar suggestion</h2>
-    <p><strong>Suggested:</strong></p>
-    <p id="grammar-suggested">${escHtml(data.grammar_suggestion)}</p>
-    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-      <button type="button" class="text-submit" id="btn-use-corrected">Use suggested version</button>
+
+  const original  = data.original_input || '';
+  const corrected = data.grammar_suggestion;
+  const diffId    = 'grammar-diff';
+  const hasDiff   = typeof Diff !== 'undefined' && original;
+
+  const html = `<div class="summary card-teal" style="margin:0;height:100%;box-sizing:border-box;">
+    <h2>Grammar Suggestion</h2>
+    <div class="diff-display" id="${diffId}-diff"></div>
+    <div style="margin-top:12px;">
+      <strong>Current text:</strong>
+      <div class="diff-current-text" id="${diffId}-current">${escHtml(corrected)}</div>
     </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
+      <button class="diff-ctrl-btn" id="btn-accept-all">Accept All</button>
+      <button class="diff-ctrl-btn" id="btn-reject-all">Reject All</button>
+      <button class="diff-ctrl-btn" id="btn-use-as-input">Use as Input</button>
+      <button class="diff-ctrl-btn" id="btn-explain-changes">Explain Changes</button>
+      <span class="text-muted" style="font-size:.85rem;">
+        <span id="${diffId}-pending">…</span> change(s) pending
+      </span>
+    </div>
+    <div id="diff-explanations-area" style="display:none;margin-top:14px;border-top:1px solid var(--border-sep);padding-top:12px;"></div>
   </div>`;
+
   showSection('section-grammar', html);
-  document.getElementById('btn-use-corrected').addEventListener('click', () => {
+
+  // Initialise diff engine
+  let gd = null;
+  if (hasDiff) {
+    gd = new GrammarDiff(diffId, original, corrected);
+    window.__grammarDiff = gd;
+    const diffEl = document.getElementById(diffId + '-diff');
+    // Event delegation for accept/reject/undo buttons inside the diff display
+    diffEl.addEventListener('click', e => {
+      const btn = e.target.closest('.diff-btn');
+      if (!btn || !gd) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (btn.classList.contains('diff-btn-accept')) gd.accept(idx);
+      else if (btn.classList.contains('diff-btn-reject')) gd.reject(idx);
+      else if (btn.classList.contains('diff-btn-undo'))   gd.undo(idx);
+    });
+    diffEl.innerHTML = gd.renderDiff();
+    document.getElementById(diffId + '-current').textContent = gd.getCurrentText().trim() || corrected;
+    document.getElementById(diffId + '-pending').textContent = gd.pendingCount();
+  } else {
+    // Fallback when jsdiff not available or no original text
+    document.getElementById(diffId + '-diff').innerHTML =
+      `<del class="diff-del">${escHtml(original)}</del> → <ins class="diff-ins">${escHtml(corrected)}</ins>`;
+    document.getElementById(diffId + '-pending').textContent = '0';
+  }
+
+  document.getElementById('btn-accept-all')?.addEventListener('click', () => gd?.acceptAll());
+  document.getElementById('btn-reject-all')?.addEventListener('click', () => gd?.rejectAll());
+  document.getElementById('btn-use-as-input')?.addEventListener('click', () => {
     const inp = document.querySelector('input[name="input"]');
-    if (inp) { inp.value = data.grammar_suggestion.trim(); inp.focus(); }
+    if (!inp) return;
+    inp.value = (gd ? gd.getCurrentText().trim() : corrected);
+    inp.focus();
+  });
+
+  const explainBtn = document.getElementById('btn-explain-changes');
+  explainBtn?.addEventListener('click', () => {
+    if (!original || !corrected) return;
+    explainBtn.disabled    = true;
+    explainBtn.textContent = 'Explaining…';
+    fetch('/api/v1/grammar/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ original, corrected }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (gd && d.changes?.length) gd.setExplanations(d.changes);
+        const area = document.getElementById('diff-explanations-area');
+        if (area && d.changes?.length) {
+          let h = '<strong>Explanations:</strong><ul class="diff-explanation-list">';
+          for (const c of d.changes) {
+            h += `<li><strong>${escHtml(c.original)} → ${escHtml(c.corrected)}</strong>: ${escHtml(c.explanation)}</li>`;
+          }
+          area.innerHTML = h + '</ul>';
+          area.style.display = '';
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        explainBtn.disabled    = false;
+        explainBtn.textContent = 'Explain Changes';
+      });
   });
 }
 

@@ -1,46 +1,65 @@
-import sys
 import uuid
-import atexit
-import signal
 import random
 import threading
 import requests
 from pathlib import Path
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from apiflask import APIFlask
+from flask import render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from app_modules.sentence_generator import SentenceGenerator
 from app_modules.fairy_tales import FairyTale
-from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.model_config import get_config, save_config, get_backend_description
-from app_modules.analysis_pipeline import run_analysis
+from app_modules.job_store import jobs, progress, executor, prune_old_jobs
+from app_modules.analysis_pipeline import run_analysis, transcriber
+from app_modules.api_v1 import api_v1
 
 import pyvis
 
-BASE_DIR = Path(__file__).resolve().parent
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = APIFlask(
+    __name__,
+    title='Serbian NLP Analysis API',
+    version='1.0',
+    template_folder='templates',
+    static_folder='static',
+    docs_path='/docs',
+)
+app.info = {
+    'description': (
+        'REST API for Serbian language analysis — sentiment, grammar correction, '
+        'SRL, ABSA, NER, summarization, topic modelling, and voice transcription. '
+        'Use POST /api/v1/analyze for the full pipeline (async), or individual '
+        'module endpoints for targeted analysis.'
+    ),
+}
+app.config['SPEC_FORMAT'] = 'json'
 app.jinja_env.globals.update(zip=zip)
 
-UPLOAD_FOLDER = BASE_DIR / 'uploads'
+UPLOAD_FOLDER = Path(__file__).resolve().parent / 'uploads'
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 
 pyvis_path = Path(pyvis.__file__).resolve().parent
+
+app.register_blueprint(api_v1)
+
+
 @app.route('/lib/<path:filename>')
+@app.doc(hide=True)
 def pyvis_static(filename):
     return send_from_directory(pyvis_path / 'lib', filename)
 
-transcriber = VoiceTranscriber()
 
 # ── Whisper model management ──────────────────────────────────────────────────
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 _whisper_lock  = threading.Lock()
 _whisper_state = {"status": "idle", "model": None, "message": ""}
 
+
 def _is_whisper_cached(model_size: str) -> bool:
     return (Path.home() / ".cache" / "whisper" / f"{model_size}.pt").exists()
+
 
 def _load_whisper_background(model_size: str):
     cached = _is_whisper_cached(model_size)
@@ -58,7 +77,7 @@ def _load_whisper_background(model_size: str):
             _whisper_state.update({"status": "error", "model": model_size,
                                    "message": f"Failed to load {model_size}: {e}"})
 
-# Start loading the configured Whisper model in the background at startup
+
 threading.Thread(
     target=_load_whisper_background,
     args=(get_config().get("whisper_model", "medium"),),
@@ -67,51 +86,23 @@ threading.Thread(
 
 print(get_backend_description())
 
-executor = ThreadPoolExecutor(max_workers=2)
-atexit.register(executor.shutdown, wait=False, cancel_futures=True)
-signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-
-MAX_INPUT_CHARS    = 15_000
-_JOB_TTL_SECONDS   = 3600
-
-jobs     = {}
-progress = {}
-
-
-def _prune_old_jobs():
-    cutoff = datetime.utcnow()
-    stale = [
-        jid for jid, job in list(jobs.items())
-        if (cutoff - job["created_at"]).total_seconds() > _JOB_TTL_SECONDS
-    ]
-    for jid in stale:
-        jobs.pop(jid, None)
-        progress.pop(jid, None)
+MAX_INPUT_CHARS = 15_000
 
 
 @app.route("/", methods=["GET", "POST"])
+@app.doc(hide=True)
 def home():
     view_data = {
-        "words": [],
-        "lemmas": [],
-        "ner_results": [],
-        "original_input": "",
-        "translated_sentence": "",
-        "dependency_tree_img": None,
-        "extractive_summary": [],
-        "abstractive_summary": None,
-        "topics": [],
-        "zipped_data": [],
-        "word_cloud_image": None,
-        "ner_heatmap_image": None,
-        "pos_sunburst_image": None,
-        "error_message": None,
-        "sentiment": None,
-        "sentence_sentiments": [],
-        "grammar_suggestion": None,
-        "grammar_applied": False,
+        "words": [], "lemmas": [], "ner_results": [],
+        "original_input": "", "translated_sentence": "",
+        "dependency_tree_img": None, "extractive_summary": [],
+        "abstractive_summary": None, "topics": [], "zipped_data": [],
+        "word_cloud_image": None, "ner_heatmap_image": None,
+        "pos_sunburst_image": None, "error_message": None,
+        "sentiment": None, "sentence_sentiments": [],
+        "grammar_suggestion": None, "grammar_applied": False,
         "selected_features": ["translation", "summaries", "topic", "visuals", "graphs", "grammar"],
-        "grammar_error": None
+        "grammar_error": None,
     }
 
     if request.method == "POST":
@@ -145,25 +136,21 @@ def home():
             )
             return render_template("index.html", **view_data)
 
-        _prune_old_jobs()
+        prune_old_jobs()
         job_id = str(uuid.uuid4())
         progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running"}
-
         future = executor.submit(run_analysis, input_string, selected_features, job_id, progress)
         jobs[job_id] = {
-            "future": future,
-            "status": "running",
-            "result": None,
-            "created_at": datetime.utcnow(),
-            "error": None
+            "future": future, "status": "running", "result": None,
+            "created_at": datetime.utcnow(), "error": None,
         }
-
         return render_template("index.html", job_id=job_id, **view_data)
 
     return render_template("index.html", **view_data)
 
 
 @app.route("/progress/<job_id>")
+@app.doc(hide=True)
 def get_progress(job_id):
     info = progress.get(job_id)
     if not info:
@@ -172,6 +159,7 @@ def get_progress(job_id):
 
 
 @app.route("/results/<job_id>")
+@app.doc(hide=True)
 def show_results(job_id):
     if job_id not in progress:
         return "Job not found or expired.", 404
@@ -187,11 +175,11 @@ def show_results(job_id):
             except Exception as e:
                 job["status"] = "failed"
                 progress[job_id].update({"status": "failed", "stage": "Error", "error_message": str(e)})
-    return render_template("index.html", job_id=job_id,
-                           original_input="", selected_features=[])
+    return render_template("index.html", job_id=job_id, original_input="", selected_features=[])
 
 
 @app.route("/dependency_tree/<job_id>")
+@app.doc(hide=True)
 def get_dependency_tree(job_id):
     html = (progress.get(job_id, {})
                     .get("sections", {})
@@ -203,6 +191,7 @@ def get_dependency_tree(job_id):
 
 
 @app.route("/get_random_sentence")
+@app.doc(hide=True)
 def get_random_sentence():
     fairy_tale = random.choice(list(FairyTale))
     sentence = SentenceGenerator.get_random_sentence(fairy_tale.get_url())
@@ -210,18 +199,17 @@ def get_random_sentence():
 
 
 @app.route('/analyze_voice', methods=['POST'])
+@app.doc(hide=True)
 def analyze_voice():
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file part in the request.'})
     file = request.files['audio']
     if file.filename == '':
         return jsonify({'error': 'No selected file.'})
-
     tmp_path = UPLOAD_FOLDER / 'temp_recording.webm'
     file.save(tmp_path)
     try:
-        transcribed_text = transcriber.transcribe_audio_file(str(tmp_path))
-        return jsonify({'text': transcribed_text})
+        return jsonify({'text': transcriber.transcribe_audio_file(str(tmp_path))})
     finally:
         try:
             tmp_path.unlink(missing_ok=True)
@@ -230,17 +218,20 @@ def analyze_voice():
 
 
 @app.route("/api/whisper-status")
+@app.doc(hide=True)
 def api_whisper_status():
     with _whisper_lock:
         return jsonify(dict(_whisper_state))
 
 
 @app.route("/api/settings", methods=["GET"])
+@app.doc(hide=True)
 def api_get_settings():
     return jsonify(get_config())
 
 
 @app.route("/api/settings", methods=["POST"])
+@app.doc(hide=True)
 def api_save_settings():
     data = request.get_json(force=True)
     if not isinstance(data, dict):
@@ -249,7 +240,6 @@ def api_save_settings():
         return jsonify({"error": "mode must be 'local' or 'remote'"}), 400
     cfg = get_config()
     old_whisper = cfg.get("whisper_model", "medium")
-
     cfg["mode"] = data["mode"]
     if isinstance(data.get("local"), dict):
         if "model" in data["local"]:
@@ -261,23 +251,21 @@ def api_save_settings():
     new_whisper = str(data.get("whisper_model", "")).strip()
     if new_whisper in WHISPER_MODELS:
         cfg["whisper_model"] = new_whisper
-
     save_config(cfg)
-
     if cfg.get("whisper_model", "medium") != old_whisper:
         threading.Thread(
             target=_load_whisper_background,
             args=(cfg["whisper_model"],),
             daemon=True,
         ).start()
-
     return jsonify({"ok": True, "config": cfg})
 
 
 @app.route("/api/test-connection", methods=["POST"])
+@app.doc(hide=True)
 def api_test_connection():
-    data = request.get_json(force=True) or {}
-    mode = data.get("mode") or get_config()["mode"]
+    data     = request.get_json(force=True) or {}
+    mode     = data.get("mode") or get_config()["mode"]
     if mode == "local":
         try:
             r = requests.get("http://localhost:11434/api/tags", timeout=5)

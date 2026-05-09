@@ -12,6 +12,7 @@ from app_modules.hate_speech_detector import analyze_hate_speech
 from app_modules.grammar_corrector import correct_sentence as grammar_correct_sentence
 from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
 from app_modules.srl_extractor import SerbianSRLExtractor
+from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.pipeline import get_nlp
 
 _log = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ visualizer         = Visualizer()
 sentiment_analyzer = SerbianSentimentAnalyzer()
 absa_analyzer      = SerbianABSA()
 srl_extractor      = SerbianSRLExtractor(pipeline=get_nlp())
+transcriber        = VoiceTranscriber()
 
 
 def _report(progress: dict, job_id: str, pct: int, stage: str):
@@ -80,7 +82,8 @@ def run_analysis(input_text, features, job_id: str, progress: dict):
                 result["grammar_error"] = str(e)
             _set_section(progress, job_id, "grammar", {
                 "grammar_suggestion": result["grammar_suggestion"],
-                "grammar_error": result["grammar_error"],
+                "grammar_error":      result["grammar_error"],
+                "original_input":     input_text,
             })
 
         _report(progress, job_id, 10, "Tokenizing")

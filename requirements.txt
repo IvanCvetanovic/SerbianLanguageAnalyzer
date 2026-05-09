@@ -57,6 +57,7 @@ executing==2.0.1
 fastjsonschema==2.20.0
 ffmpeg-python==0.2.0
 filelock==3.17.0
+apiflask
 Flask==3.0.3
 fonttools==4.52.1
 fqdn==1.5.1
