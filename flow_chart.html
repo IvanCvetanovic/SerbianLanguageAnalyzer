@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Serbian Language Analyzer — Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 2rem;
+      margin: 0;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 0.3rem;
+      color: #f8fafc;
+    }
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      font-size: 0.8rem;
+    }
+    .leg { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 12px; height: 12px; border-radius: 3px; }
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 10px;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    .mermaid { display: flex; justify-content: center; }
+    #error-msg {
+      display: none;
+      color: #fca5a5;
+      background: #450a0a;
+      border: 1px solid #dc2626;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Serbian Language Analyzer — System Architecture</h1>
+<p class="subtitle">Data flow from user input to final JSON output</p>
+
+<div class="legend">
+  <div class="leg"><div class="dot" style="background:#7c3aed"></div>Llama 3.1</div>
+  <div class="leg"><div class="dot" style="background:#0891b2"></div>CLASSLA</div>
+  <div class="leg"><div class="dot" style="background:#059669"></div>Transformer (BERT)</div>
+  <div class="leg"><div class="dot" style="background:#d97706"></div>Statistical</div>
+  <div class="leg"><div class="dot" style="background:#dc2626"></div>Whisper</div>
+  <div class="leg"><div class="dot" style="background:#334155"></div>Infrastructure</div>
+</div>
+
+<div id="error-msg">
+  ⚠️ Diagram failed to render. This is usually caused by no internet connection (Mermaid loads from CDN).
+  Try opening the file while connected to the internet.
+</div>
+
+<div class="card">
+  <div class="mermaid">
+flowchart TD
+
+    TXT["📝 Text Input\nLatin or Cyrillic"]
+    AUD["🎤 Audio File\nWAV / WebM / MP3"]
+
+    AUD --> WHISPER["Whisper\nSpeech-to-Text\nmodel: medium / large"]
+    WHISPER --> RAW["Serbian Text String"]
+    TXT --> RAW
+
+    RAW --> VAL["Validation\nmax 15,000 characters"]
+    VAL --> QUEUE["Async Job Queue\nThreadPoolExecutor · 1 worker\nreturns job_id immediately"]
+
+    subgraph PH1["Phase 1 — Document-level Analysis"]
+        direction LR
+        GRAM["Grammar Correction\nLlama 3.1"]
+        TOK["Tokenization\nCLASSLA"]
+        FTRANS["Full-sentence Translation sr→en\nLlama 3.1"]
+        SENT["Sentiment Analysis\nXLM-RoBERTa · cardiffnlp"]
+        HATE["Hate Speech Detection\nXLM-RoBERTa · multilingual"]
+        ABSA["Aspect-Based Sentiment · ABSA\nCLASSLA + Llama 3.1"]
+        ESUM["Extractive Summarization\nTextRank + TF-IDF"]
+        ASUM["Abstractive Summarization\nLlama 3.1"]
+        TOPIC["Topic Modelling\nLDA · sklearn + Llama 3.1 translation"]
+        SRL["Semantic Role Labeling\nCLASSLA + Llama 3.1"]
+
+        GRAM --> TOK --> FTRANS --> SENT --> HATE --> ABSA --> ESUM --> ASUM --> TOPIC --> SRL
+    end
+
+    subgraph PH2["Phase 2 — Per-word Analysis"]
+        direction LR
+        LEM["Lemmatization\nCLASSLA"]
+        DICT["Serbian Wordnet CSV\nDefinition lookup"]
+        MORPH["Morphology Tagging\nCLASSLA · POS, Case, Gender, Number, Person"]
+        NER["Named Entity Recognition\nCLASSLA"]
+        DEP["Dependency Parsing\nCLASSLA · head + deprel"]
+        WDTR["Per-lemma Translation · batches of 50\nLlama 3.1"]
+        LINKS["PONS Dictionary\nURL generation"]
+
+        LEM --> DICT --> MORPH --> NER --> DEP --> WDTR --> LINKS
+    end
+
+    subgraph PH3["Phase 3 — Visualizations"]
+        direction LR
+        DEPTREE["Dependency Tree\nPyVis → Interactive HTML"]
+        WC["Word Cloud\nWordCloud + Matplotlib → PNG"]
+        HMAP["NER Heatmap\nMatplotlib → PNG"]
+        SUN["POS Sunburst\nMatplotlib → PNG"]
+
+        DEPTREE --> WC --> HMAP --> SUN
+    end
+
+    subgraph OUT["Output"]
+        direction LR
+        WEBUI["Web UI\nFlask + Jinja2"]
+        API["REST API\nAPIFlask + Swagger UI at /docs"]
+    end
+
+    QUEUE --> PH1
+    PH1   --> PH2
+    PH2   --> PH3
+    PH3   --> OUT
+
+    classDef llm     fill:#3b1f6e,stroke:#7c3aed,color:#e9d5ff
+    classDef classla fill:#0c3547,stroke:#0891b2,color:#bae6fd
+    classDef trf     fill:#064e3b,stroke:#059669,color:#a7f3d0
+    classDef stat    fill:#451a03,stroke:#d97706,color:#fde68a
+    classDef whisper fill:#450a0a,stroke:#dc2626,color:#fecaca
+    classDef infra   fill:#1e293b,stroke:#334155,color:#cbd5e1
+    classDef hybrid  fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
+    classDef viz     fill:#1a1f30,stroke:#475569,color:#e2e8f0
+
+    class GRAM,FTRANS,ASUM,WDTR llm
+    class TOK,LEM,MORPH,NER,DEP classla
+    class SENT,HATE trf
+    class ESUM,TOPIC stat
+    class WHISPER whisper
+    class VAL,QUEUE,RAW,DICT,LINKS,WEBUI,API infra
+    class ABSA,SRL hybrid
+    class DEPTREE,WC,HMAP,SUN viz
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    flowchart: { curve: 'basis', useMaxWidth: true },
+    securityLevel: 'loose'
+  });
+
+  // Show error message if diagram didn't render after 3 seconds
+  setTimeout(() => {
+    const svg = document.querySelector('.mermaid svg');
+    if (!svg) {
+      document.getElementById('error-msg').style.display = 'block';
+    }
+  }, 3000);
+</script>
+
+</body>
+</html>

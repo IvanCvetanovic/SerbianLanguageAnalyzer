@@ -6,7 +6,7 @@ from datetime import datetime
 
 jobs: dict = {}
 progress: dict = {}
-executor = ThreadPoolExecutor(max_workers=2)
+executor = ThreadPoolExecutor(max_workers=1)
 
 _JOB_TTL_SECONDS = 3600
 
