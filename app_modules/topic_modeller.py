@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
+from app_modules.transliteration import lat_to_cyr
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _DEFAULT_STOPWORDS_CSV = str(_DATA_DIR / "SSWdictionary.csv")
@@ -19,7 +20,9 @@ def load_serbian_stopwords(csv_path: str) -> list[str]:
             w = re.sub(r'^[^\w]+|[^\w]+$', '', w)
             if len(w) >= 2:
                 stopwords.append(w)
-    return stopwords
+                # Add Cyrillic transliteration to support both scripts
+                stopwords.append(lat_to_cyr(w))
+    return list(set(stopwords))
 
 
 def translate_to_english(text_or_texts, translator):
