@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cu118
 accelerate==1.4.0
 annotated-types==0.7.0
 anyio==4.6.2.post1
@@ -63,18 +64,10 @@ fonttools==4.52.1
 fqdn==1.5.1
 fsspec==2025.3.0
 future==1.0.0
-googletrans==4.0.0rc1
 graphviz==0.20.3
 greenlet==3.1.1
-h11==0.9.0
-h2==3.2.0
-hpack==3.0.0
-hstspreload==2024.12.1
-httpcore==0.9.1
-httpx==0.13.3
 huggingface-hub==0.34.4
 humanize-ai-text==1.0.1
-hyperframe==5.2.0
 HyperPyYAML==1.2.2
 idna==2.10
 intervaltree==3.1.0
