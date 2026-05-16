@@ -86,6 +86,103 @@ class ExplainOut(Schema):
     changes = List(Nested(ExplainChangeOut))
 
 
+# ── Per-module output schemas ─────────────────────────────────────────────────
+
+class NEREntityOut(Schema):
+    text   = String()
+    entity = String()
+
+class NEROut(Schema):
+    ner = List(Nested(NEREntityOut))
+
+
+class SRLFrameOut(Schema):
+    predicate       = String()
+    predicate_lemma = String()
+    predicate_index = Integer()
+    negated         = Boolean()
+    roles           = Dict(keys=String(), values=List(String()))
+
+class SRLSentenceOut(Schema):
+    sentence = String()
+    frames   = List(Nested(SRLFrameOut))
+
+class SRLOut(Schema):
+    srl = List(Nested(SRLSentenceOut))
+
+
+class ABSAAspectOut(Schema):
+    aspect      = String()
+    sentiment   = String()
+    confidence  = Float()
+    evidence    = String()
+    aspect_en   = String(allow_none=True)
+    evidence_en = String(allow_none=True)
+
+class ABSASentenceOut(Schema):
+    sentence = String()
+    aspects  = List(Nested(ABSAAspectOut))
+
+class ABSAOut(Schema):
+    absa = List(Nested(ABSASentenceOut))
+
+
+class AbstractiveSummaryOut(Schema):
+    text_sr = String(allow_none=True)
+    text_en = String(allow_none=True)
+
+class SummarizeOut(Schema):
+    extractive  = List(String())
+    abstractive = Nested(AbstractiveSummaryOut, allow_none=True)
+
+
+class TopicsOut(Schema):
+    topics = List(String())
+
+
+class TranscribeQueryIn(Schema):
+    analyze  = Boolean(load_default=False,
+                       metadata={'description': 'Also run the full analysis pipeline on the transcript.'})
+    features = List(String(), load_default=None,
+                    metadata={'description': 'Comma-separated feature list for the analysis pipeline.'})
+
+class TranscribeOut(Schema):
+    text     = String()
+    job_id   = String(allow_none=True)
+    poll_url = String(allow_none=True)
+
+
+class TranslateOut(Schema):
+    translation = String()
+
+
+class HateSpeechScoresOut(Schema):
+    race               = Float()
+    sexual_orientation = Float()
+    gender             = Float()
+    physical_appearance = Float()
+    religion           = Float()
+    disability         = Float()
+    appropriate        = Float()
+
+class HateSpeechResultOut(Schema):
+    flagged  = Boolean()
+    label    = String()
+    score    = Float()
+    scores   = Nested(HateSpeechScoresOut)
+    reasons  = List(String())
+
+class HateSpeechSentenceOut(Schema):
+    sentence = String()
+    flagged  = Boolean()
+    label    = String()
+    score    = Float()
+
+class HateSpeechOut(Schema):
+    overall   = Nested(HateSpeechResultOut)
+    sentences = List(Nested(HateSpeechSentenceOut))
+
+
 # ── Result formatter (raw pipeline dict → clean API dict) ─────────────────────
 
 def _val(v):

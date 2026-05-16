@@ -20,10 +20,13 @@ from app_modules.analysis_pipeline import (
 from app_modules.summarizer import extractive_summary, abstractive_summary
 from app_modules.topic_modeller import get_topics
 from app_modules.grammar_corrector import correct_sentence, explain_corrections
+from app_modules.hate_speech_detector import analyze_hate_speech
 from app_modules.api_schema import (
     AnalyzeIn, TextIn, ExplainIn,
     JobCreatedOut, JobStatusOut,
     SentimentOut, GrammarOut, ExplainOut,
+    NEROut, SRLOut, ABSAOut, SummarizeOut, TopicsOut,
+    TranscribeQueryIn, TranscribeOut, TranslateOut, HateSpeechOut,
     VALID_FEATURES,
     format_result,
 )
@@ -136,6 +139,7 @@ def api_grammar_explain(body):
 
 @api_v1.post('/srl')
 @api_v1.input(TextIn, arg_name='body')
+@api_v1.output(SRLOut)
 @api_v1.doc(
     summary='Semantic role labeling',
     description='Returns predicate–argument frames for each sentence in the input.',
@@ -146,6 +150,7 @@ def api_srl(body):
 
 @api_v1.post('/absa')
 @api_v1.input(TextIn, arg_name='body')
+@api_v1.output(ABSAOut)
 @api_v1.doc(
     summary='Aspect-based sentiment analysis',
     description='Returns aspect/sentiment/confidence triples for each sentence.',
@@ -156,6 +161,7 @@ def api_absa(body):
 
 @api_v1.post('/ner')
 @api_v1.input(TextIn, arg_name='body')
+@api_v1.output(NEROut)
 @api_v1.doc(
     summary='Named entity recognition',
     description='Returns a list of named entity spans with their labels (PERSON, ORG, LOC, …).',
@@ -166,6 +172,7 @@ def api_ner(body):
 
 @api_v1.post('/summarize')
 @api_v1.input(TextIn, arg_name='body')
+@api_v1.output(SummarizeOut)
 @api_v1.doc(
     summary='Text summarization',
     description=(
@@ -188,6 +195,7 @@ def api_summarize(body):
 
 @api_v1.post('/topics')
 @api_v1.input(TextIn, arg_name='body')
+@api_v1.output(TopicsOut)
 @api_v1.doc(
     summary='Topic modelling',
     description='Returns the top keyword topics extracted from the text.',
@@ -198,16 +206,18 @@ def api_topics(body):
 
 
 @api_v1.post('/transcribe')
+@api_v1.input(TranscribeQueryIn, location='query', arg_name='query')
+@api_v1.output(TranscribeOut)
 @api_v1.doc(
     summary='Transcribe audio',
     description=(
         'Accepts a WAV/WebM/MP3 audio file via `multipart/form-data` (field name: `audio`). '
         'Returns Whisper transcription. '
-        'Add `?analyze=true` to also submit the transcript to the full analysis pipeline '
+        'Set `analyze=true` to also submit the transcript to the full analysis pipeline '
         '(returns a `job_id` in addition to `text`).'
     ),
 )
-def api_transcribe():
+def api_transcribe(query):
     if 'audio' not in request.files:
         abort(400, message='Missing audio. Send as multipart/form-data with field name "audio".')
     f = request.files['audio']
@@ -226,9 +236,9 @@ def api_transcribe():
         except OSError:
             pass
 
-    if request.args.get('analyze', '').lower() in ('1', 'true', 'yes'):
-        features_param = request.args.get('features', '')
-        features = [x.strip() for x in features_param.split(',') if x.strip()] or list(VALID_FEATURES)
+    if query.get('analyze'):
+        raw_features = query.get('features') or []
+        features = [f for f in raw_features if f] or list(VALID_FEATURES)
         prune_old_jobs()
         job_id = str(uuid.uuid4())
         progress[job_id] = {'pct': 0, 'stage': 'Queued', 'status': 'running'}
@@ -237,6 +247,48 @@ def api_transcribe():
             'future': future, 'status': 'running', 'result': None,
             'created_at': datetime.utcnow(), 'error': None,
         }
-        return jsonify({'text': text, 'job_id': job_id, 'poll_url': f'/api/v1/jobs/{job_id}'})
+        return {'text': text, 'job_id': job_id, 'poll_url': f'/api/v1/jobs/{job_id}'}
 
-    return jsonify({'text': text})
+    return {'text': text}
+
+
+@api_v1.post('/translate')
+@api_v1.input(TextIn, arg_name='body')
+@api_v1.output(TranslateOut)
+@api_v1.doc(
+    summary='Translate Serbian to English',
+    description='Translates Serbian text (Latin or Cyrillic) to English using the configured LLM backend.',
+)
+def api_translate(body):
+    result = translator.translate(body['text'], src='sr', dest='en')
+    return {'translation': result.text}
+
+
+@api_v1.post('/hate-speech')
+@api_v1.input(TextIn, arg_name='body')
+@api_v1.output(HateSpeechOut)
+@api_v1.doc(
+    summary='Hate speech detection',
+    description='Returns overall and per-sentence hate speech classification with confidence scores.',
+)
+def api_hate_speech(body):
+    text = body['text']
+    raw_overall = analyze_hate_speech(text)
+    overall = {
+        'flagged': raw_overall['flagged'],
+        'label':   raw_overall['label'],
+        'score':   raw_overall['score'],
+        'scores':  raw_overall['scores'],
+        'reasons': raw_overall['reasons'],
+    }
+    sentences = sentiment_analyzer.split_sentences(text)
+    sentence_results = []
+    for s in sentences:
+        raw = analyze_hate_speech(s)
+        sentence_results.append({
+            'sentence': s,
+            'flagged':  raw['flagged'],
+            'label':    raw['label'],
+            'score':    raw['score'],
+        })
+    return {'overall': overall, 'sentences': sentence_results}

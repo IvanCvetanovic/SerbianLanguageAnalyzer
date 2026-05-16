@@ -1,7 +1,12 @@
 import csv
 import re
+from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
+
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DEFAULT_STOPWORDS_CSV = str(_DATA_DIR / "SSWdictionary.csv")
+
 
 def load_serbian_stopwords(csv_path: str) -> list[str]:
     stopwords = []
@@ -16,7 +21,7 @@ def load_serbian_stopwords(csv_path: str) -> list[str]:
                 stopwords.append(w)
     return stopwords
 
-@staticmethod
+
 def translate_to_english(text_or_texts, translator):
     res = translator.translate(text_or_texts, src="sr", dest="en")
     if isinstance(res, list):
@@ -29,7 +34,7 @@ def get_topics(
     translator,
     n_topics: int = 1,
     n_top_words: int = 8,
-    stopwords_csv: str = "C:\\Users\\PrOfSeS\\Desktop\\Master Thesis Project\\data\\SSWdictionary.csv",
+    stopwords_csv: str = _DEFAULT_STOPWORDS_CSV,
     translate: bool = True
 ) -> list[list[str]]:
     sr_stop = load_serbian_stopwords(stopwords_csv)
