@@ -3,3 +3,5 @@ __pycache__/
 Documentation/
 config.json
 uploads/
+.claude/settings.local.json
+P2 mögliche Erweiterungen.txt
