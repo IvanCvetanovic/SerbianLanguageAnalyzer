@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from openai import OpenAI
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+_thread_local = threading.local()
+
+
+def set_config_override(cfg: dict | None) -> None:
+    _thread_local.override = cfg
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
@@ -23,6 +29,9 @@ _DEFAULTS: dict = {
 
 
 def get_config() -> dict:
+    override = getattr(_thread_local, "override", None)
+    if override is not None:
+        return override
     try:
         with open(_CONFIG_PATH, encoding="utf-8") as f:
             data = json.load(f)

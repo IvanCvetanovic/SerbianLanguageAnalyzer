@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+{% include "partials/_head.html" %}
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div>
+      <h1>Model Comparison</h1>
+      <p>Run the same text through two different LLM backends and compare outputs side by side.</p>
+    </div>
+    <a href="/" style="background:rgba(255,255,255,0.15);color:inherit;border:1px solid rgba(255,255,255,0.3);
+                        border-radius:8px;padding:8px 18px;font-size:.9rem;font-weight:600;text-decoration:none;">
+      ← Back to Analyzer
+    </a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Input form ──────────────────────────────────────────────────────── -->
+  <section id="compare-form-section">
+    <form id="compare-form">
+
+      <label style="font-weight:600;display:block;margin-bottom:6px;">Text to analyze</label>
+      <textarea id="cmp-text" rows="5" placeholder="Enter Serbian text (Latin or Cyrillic)…"
+                style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);
+                       background:var(--bg-card);color:var(--text);font-size:.95rem;resize:vertical;"></textarea>
+
+      <div style="margin-top:14px;">
+        <label style="font-weight:600;display:block;margin-bottom:8px;">Features</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+          {% for feat in ['grammar','translation','summaries','topic'] %}
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" name="features" value="{{ feat }}" checked> {{ feat }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Two model config cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+
+        {% for prefix, label in [('a','Model A'), ('b','Model B')] %}
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
+          <h3 style="margin:0 0 12px;font-size:1rem;">{{ label }}</h3>
+
+          <label style="font-size:.85rem;display:block;margin-bottom:4px;">Backend</label>
+          <select id="{{ prefix }}-mode" onchange="toggleRemote('{{ prefix }}')"
+                  style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+                         background:var(--bg-card);color:var(--text);margin-bottom:10px;">
+            <option value="local"  {% if default_config.mode == 'local'  %}selected{% endif %}>Local (Ollama)</option>
+            <option value="remote" {% if default_config.mode == 'remote' %}selected{% endif %}>Remote (vLLM)</option>
+          </select>
+
+          <div id="{{ prefix }}-local-fields">
+            <label style="font-size:.85rem;display:block;margin-bottom:4px;">Ollama model</label>
+            <input id="{{ prefix }}-local-model" type="text"
+                   value="{{ default_config.local.model }}"
+                   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+                          background:var(--bg-card);color:var(--text);">
+          </div>
+
+          <div id="{{ prefix }}-remote-fields" style="display:none;">
+            <label style="font-size:.85rem;display:block;margin-bottom:4px;">Base URL</label>
+            <input id="{{ prefix }}-remote-url" type="text"
+                   value="{{ default_config.remote.base_url }}"
+                   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+                          background:var(--bg-card);color:var(--text);margin-bottom:8px;">
+            <label style="font-size:.85rem;display:block;margin-bottom:4px;">Model name</label>
+            <input id="{{ prefix }}-remote-model" type="text"
+                   value="{{ default_config.remote.model }}"
+                   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+                          background:var(--bg-card);color:var(--text);margin-bottom:8px;">
+            <label style="font-size:.85rem;display:block;margin-bottom:4px;">API key</label>
+            <input id="{{ prefix }}-remote-key" type="text"
+                   value="{{ default_config.remote.api_key }}"
+                   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);
+                          background:var(--bg-card);color:var(--text);">
+          </div>
+        </div>
+        {% endfor %}
+
+      </div>
+
+      <button type="submit"
+              style="margin-top:18px;padding:10px 28px;background:#1565c0;color:#fff;border:none;
+                     border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">
+        Run Comparison
+      </button>
+    </form>
+  </section>
+
+  <!-- ── Results area ────────────────────────────────────────────────────── -->
+  <section id="compare-results" style="display:none;margin-top:30px;">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+      {% for prefix, label in [('a','Model A'), ('b','Model B')] %}
+      <div>
+        <h3 id="{{ prefix }}-title" style="margin-bottom:10px;">{{ label }}</h3>
+
+        <!-- Progress bar -->
+        <div id="{{ prefix }}-progress-wrap"
+             style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:6px;">
+            <span id="{{ prefix }}-stage">Queued…</span>
+            <span id="{{ prefix }}-pct">0%</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;">
+            <div id="{{ prefix }}-bar"
+                 style="height:6px;background:#1565c0;border-radius:3px;width:0%;transition:width .4s;"></div>
+          </div>
+        </div>
+
+        <!-- Result sections (populated when done) -->
+        <div id="{{ prefix }}-result" style="display:none;"></div>
+        <div id="{{ prefix }}-error"  style="display:none;" class="alert"></div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const DEFAULT_CFG = {{ default_config | tojson }};
+
+  // Show/hide local vs remote fields
+  function toggleRemote(prefix) {
+    const mode = document.getElementById(prefix + '-mode').value;
+    document.getElementById(prefix + '-local-fields').style.display  = mode === 'local'  ? '' : 'none';
+    document.getElementById(prefix + '-remote-fields').style.display = mode === 'remote' ? '' : 'none';
+  }
+
+  // Init toggle state based on default config
+  ['a', 'b'].forEach(p => {
+    toggleRemote(p);
+    // Set Model B to the opposite backend by default so the comparison is meaningful
+    if (p === 'b') {
+      const sel = document.getElementById('b-mode');
+      sel.value = DEFAULT_CFG.mode === 'local' ? 'remote' : 'local';
+      toggleRemote('b');
+    }
+  });
+
+  function buildModelConfig(prefix) {
+    const mode = document.getElementById(prefix + '-mode').value;
+    const cfg  = { mode };
+    if (mode === 'local') {
+      cfg.local_model = document.getElementById(prefix + '-local-model').value.trim();
+    } else {
+      cfg.remote_base_url = document.getElementById(prefix + '-remote-url').value.trim();
+      cfg.remote_model    = document.getElementById(prefix + '-remote-model').value.trim();
+      cfg.remote_api_key  = document.getElementById(prefix + '-remote-key').value.trim();
+    }
+    return cfg;
+  }
+
+  async function submitJob(text, features, model_config) {
+    const res = await fetch('/api/v1/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, features, model_config }),
+    });
+    if (!res.ok) throw new Error('Failed to submit job (' + res.status + ')');
+    return res.json();
+  }
+
+  function setProgress(prefix, pct, stage) {
+    document.getElementById(prefix + '-stage').textContent = stage;
+    document.getElementById(prefix + '-pct').textContent   = pct + '%';
+    document.getElementById(prefix + '-bar').style.width   = pct + '%';
+  }
+
+  async function pollJob(jobId, prefix) {
+    try {
+      const res  = await fetch('/api/v1/jobs/' + jobId);
+      const data = await res.json();
+      setProgress(prefix, data.pct || 0, data.stage || '…');
+      if (data.status === 'running') {
+        setTimeout(() => pollJob(jobId, prefix), 2000);
+      } else if (data.status === 'finished') {
+        document.getElementById(prefix + '-progress-wrap').style.display = 'none';
+        renderResult(prefix, data.result);
+      } else {
+        showError(prefix, data.error_message || 'Job failed.');
+      }
+    } catch (e) {
+      showError(prefix, e.message);
+    }
+  }
+
+  function showError(prefix, msg) {
+    const el = document.getElementById(prefix + '-error');
+    el.textContent = msg;
+    el.style.display = '';
+  }
+
+  function card(title, content) {
+    return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;
+                         padding:14px;margin-bottom:12px;">
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                           color:var(--text-muted);margin-bottom:8px;">${title}</div>
+              ${content}
+            </div>`;
+  }
+
+  function renderResult(prefix, r) {
+    if (!r) { showError(prefix, 'No result data.'); return; }
+
+    const parts = [];
+
+    // Grammar
+    if (r.grammar) {
+      const sug = r.grammar.suggestion;
+      parts.push(card('Grammar Correction',
+        sug
+          ? `<p style="font-size:.88rem;">${escHtml(sug)}</p>`
+          : `<p style="font-size:.88rem;color:var(--text-muted);">No corrections needed.</p>`
+      ));
+    }
+
+    // Translation
+    if (r.input_translation) {
+      parts.push(card('Translation',
+        `<p style="font-size:.88rem;">${escHtml(r.input_translation)}</p>`
+      ));
+    }
+
+    // Abstractive summary
+    if (r.abstractive_summary && (r.abstractive_summary.text_sr || r.abstractive_summary.text_en)) {
+      const ab = r.abstractive_summary;
+      parts.push(card('Abstractive Summary',
+        (ab.text_sr ? `<p style="font-size:.88rem;margin-bottom:6px;">${escHtml(ab.text_sr)}</p>` : '') +
+        (ab.text_en ? `<p style="font-size:.82rem;color:var(--text-muted);">${escHtml(ab.text_en)}</p>` : '')
+      ));
+    }
+
+    // Topics
+    if (r.topics && r.topics.length) {
+      const tags = r.topics.map(t =>
+        `<span style="background:rgba(21,101,192,.2);border:1px solid rgba(21,101,192,.4);
+                       border-radius:4px;padding:2px 8px;font-size:.8rem;">${escHtml(t)}</span>`
+      ).join(' ');
+      parts.push(card('Topics', `<div style="display:flex;flex-wrap:wrap;gap:6px;">${tags}</div>`));
+    }
+
+    // ABSA
+    if (r.absa && r.absa.length) {
+      const rows = r.absa.flatMap(sent =>
+        (sent.aspects || []).map(a =>
+          `<tr>
+            <td style="padding:4px 8px;font-size:.82rem;">${escHtml(a.aspect)}${a.aspect_en ? ' <span style="color:var(--text-muted)">/ ' + escHtml(a.aspect_en) + '</span>' : ''}</td>
+            <td style="padding:4px 8px;font-size:.82rem;">${escHtml(a.sentiment)}</td>
+            <td style="padding:4px 8px;font-size:.82rem;color:var(--text-muted);">${(a.confidence * 100).toFixed(0)}%</td>
+          </tr>`
+        )
+      ).join('');
+      if (rows) {
+        parts.push(card('ABSA',
+          `<table style="width:100%;border-collapse:collapse;">
+            <thead><tr>
+              <th style="text-align:left;padding:4px 8px;font-size:.78rem;color:var(--text-muted);">Aspect</th>
+              <th style="text-align:left;padding:4px 8px;font-size:.78rem;color:var(--text-muted);">Sentiment</th>
+              <th style="text-align:left;padding:4px 8px;font-size:.78rem;color:var(--text-muted);">Conf.</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        ));
+      }
+    }
+
+    if (!parts.length) {
+      parts.push('<p style="color:var(--text-muted);font-size:.88rem;">No LLM-dependent output available for the selected features.</p>');
+    }
+
+    const el = document.getElementById(prefix + '-result');
+    el.innerHTML = parts.join('');
+    el.style.display = '';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  document.getElementById('compare-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const text = document.getElementById('cmp-text').value.trim();
+    if (!text) { alert('Please enter some text.'); return; }
+
+    const features = [...document.querySelectorAll('[name=features]:checked')].map(cb => cb.value);
+    const cfgA = buildModelConfig('a');
+    const cfgB = buildModelConfig('b');
+
+    // Label panels with model descriptions
+    ['a', 'b'].forEach(p => {
+      const cfg  = p === 'a' ? cfgA : cfgB;
+      const name = cfg.mode === 'local'
+        ? 'Local — ' + (cfg.local_model || 'default')
+        : 'Remote — ' + (cfg.remote_model || 'default');
+      document.getElementById(p + '-title').textContent = (p === 'a' ? 'Model A' : 'Model B') + ' (' + name + ')';
+      setProgress(p, 0, 'Queued…');
+      document.getElementById(p + '-result').style.display = 'none';
+      document.getElementById(p + '-error').style.display  = 'none';
+      document.getElementById(p + '-progress-wrap').style.display = '';
+    });
+
+    document.getElementById('compare-results').style.display = '';
+
+    try {
+      // Submit both jobs; they queue naturally behind max_workers=1
+      const [jobA, jobB] = await Promise.all([
+        submitJob(text, features, cfgA),
+        submitJob(text, features, cfgB),
+      ]);
+      pollJob(jobA.job_id, 'a');
+      pollJob(jobB.job_id, 'b');
+    } catch (err) {
+      showError('a', err.message);
+      showError('b', err.message);
+    }
+  });
+</script>
+
+</body>
+</html>

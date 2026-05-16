@@ -8,6 +8,7 @@ from apiflask import APIBlueprint, abort
 from flask import request, jsonify
 
 from app_modules.job_store import jobs, progress, executor, prune_old_jobs
+from app_modules.model_config import get_config
 from app_modules.analysis_pipeline import (
     run_analysis,
     sentiment_analyzer,
@@ -22,7 +23,7 @@ from app_modules.topic_modeller import get_topics
 from app_modules.grammar_corrector import correct_sentence, explain_corrections
 from app_modules.hate_speech_detector import analyze_hate_speech
 from app_modules.api_schema import (
-    AnalyzeIn, TextIn, ExplainIn,
+    AnalyzeIn, TextIn, ExplainIn, ModelConfigIn,
     JobCreatedOut, JobStatusOut,
     SentimentOut, GrammarOut, ExplainOut,
     NEROut, SRLOut, ABSAOut, SummarizeOut, TopicsOut,
@@ -32,6 +33,24 @@ from app_modules.api_schema import (
 )
 
 api_v1 = APIBlueprint('api_v1', __name__, url_prefix='/api/v1')
+
+
+def _build_config_override(mc: dict | None) -> dict | None:
+    if not mc:
+        return None
+    base = get_config()
+    cfg = {**base, 'local': dict(base['local']), 'remote': dict(base['remote'])}
+    if mc.get('mode'):
+        cfg['mode'] = mc['mode']
+    if mc.get('local_model'):
+        cfg['local']['model'] = mc['local_model']
+    if mc.get('remote_base_url'):
+        cfg['remote']['base_url'] = mc['remote_base_url']
+    if mc.get('remote_model'):
+        cfg['remote']['model'] = mc['remote_model']
+    if mc.get('remote_api_key'):
+        cfg['remote']['api_key'] = mc['remote_api_key']
+    return cfg
 
 
 # ── Full async pipeline ───────────────────────────────────────────────────────
@@ -50,7 +69,8 @@ def analyze(body):
     prune_old_jobs()
     job_id = str(uuid.uuid4())
     progress[job_id] = {'pct': 0, 'stage': 'Queued', 'status': 'running'}
-    future = executor.submit(run_analysis, body['text'], body['features'], job_id, progress)
+    config_override = _build_config_override(body.get('model_config'))
+    future = executor.submit(run_analysis, body['text'], body['features'], job_id, progress, config_override)
     jobs[job_id] = {
         'future': future, 'status': 'running', 'result': None,
         'created_at': datetime.utcnow(), 'error': None,

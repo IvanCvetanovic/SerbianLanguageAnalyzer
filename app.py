@@ -224,6 +224,12 @@ def api_whisper_status():
         return jsonify(dict(_whisper_state))
 
 
+@app.route("/compare")
+@app.doc(hide=True)
+def compare_page():
+    return render_template("compare.html", default_config=get_config())
+
+
 @app.route("/api/settings", methods=["GET"])
 @app.doc(hide=True)
 def api_get_settings():

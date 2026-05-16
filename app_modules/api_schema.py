@@ -13,6 +13,19 @@ class TextIn(Schema):
     )
 
 
+class ModelConfigIn(Schema):
+    mode            = String(load_default=None, allow_none=True,
+                             metadata={'description': 'local or remote. Defaults to the global setting.'})
+    local_model     = String(load_default=None, allow_none=True,
+                             metadata={'description': 'Ollama model name, e.g. llama3.1:8b'})
+    remote_base_url = String(load_default=None, allow_none=True,
+                             metadata={'description': 'vLLM base URL, e.g. http://host:8001/v1'})
+    remote_model    = String(load_default=None, allow_none=True,
+                             metadata={'description': 'Model name on the remote endpoint.'})
+    remote_api_key  = String(load_default=None, allow_none=True,
+                             metadata={'description': 'API key (use "not-needed" for open endpoints).'})
+
+
 class AnalyzeIn(Schema):
     text = String(required=True, metadata={'description': 'Serbian text to analyze.'})
     features = List(
@@ -24,6 +37,12 @@ class AnalyzeIn(Schema):
                 f'Any subset of: {VALID_FEATURES}. Defaults to all.'
             ),
         },
+    )
+    model_config = Nested(
+        ModelConfigIn,
+        load_default=None,
+        allow_none=True,
+        metadata={'description': 'Optional per-request model override. Omit to use the global config.'},
     )
 
 

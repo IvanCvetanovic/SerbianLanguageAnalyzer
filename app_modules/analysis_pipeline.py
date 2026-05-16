@@ -14,6 +14,7 @@ from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
 from app_modules.srl_extractor import SerbianSRLExtractor
 from app_modules.speech_to_text import VoiceTranscriber
 from app_modules.pipeline import get_nlp
+from app_modules.model_config import set_config_override
 
 _log = logging.getLogger(__name__)
 
@@ -41,7 +42,16 @@ def _set_section(progress: dict, job_id: str, key: str, data):
         progress[job_id].setdefault("sections", {})[key] = data
 
 
-def run_analysis(input_text, features, job_id: str, progress: dict):
+def run_analysis(input_text, features, job_id: str, progress: dict, config_override: dict | None = None):
+    if config_override is not None:
+        set_config_override(config_override)
+    try:
+        return _run_analysis_inner(input_text, features, job_id, progress)
+    finally:
+        set_config_override(None)
+
+
+def _run_analysis_inner(input_text, features, job_id: str, progress: dict):
     progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running", "sections": {}}
 
     result = {
