@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
-from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
+from src.core.model_config import get_config, get_openai_client, OLLAMA_URL
 
-from app_modules.pipeline import get_nlp
+from src.core.pipeline import get_nlp
 
 _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 _ABSA_SYSTEM = (

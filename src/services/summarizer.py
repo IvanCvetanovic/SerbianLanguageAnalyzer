@@ -3,8 +3,8 @@ import numpy as np
 import networkx as nx
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
-from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
-from app_modules.transliteration import lat_to_cyr, cyr_to_lat
+from src.core.model_config import get_config, get_openai_client, OLLAMA_URL
+from src.core.transliteration import lat_to_cyr, cyr_to_lat
 
 _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 

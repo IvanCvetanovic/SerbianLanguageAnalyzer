@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Serbian Language Analyzer — Architecture</title>
+  <title>SLAVA Flow Chart</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0f1117;
-      color: #e2e8f0;
+      background: #f8fafc;
+      color: #1e293b;
       font-family: 'Segoe UI', system-ui, sans-serif;
       padding: 2rem;
     }
 
-    h1 { text-align: center; font-size: 1.4rem; color: #f8fafc; margin-bottom: 0.3rem; }
-    .subtitle { text-align: center; color: #94a3b8; font-size: 0.82rem; margin-bottom: 1.5rem; }
+    h1 { text-align: center; font-size: 1.4rem; color: #0f172a; margin-bottom: 0.3rem; }
+    .subtitle { text-align: center; color: #64748b; font-size: 0.82rem; margin-bottom: 1.5rem; }
 
     /* ── Legend ──────────────────────────────────────────────────────────── */
     .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-bottom: 2rem; font-size: 0.78rem; }
-    .leg { display: flex; align-items: center; gap: 0.35rem; color: #cbd5e1; }
+    .leg { display: flex; align-items: center; gap: 0.35rem; color: #475569; }
     .dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
 
     /* ── Diagram ─────────────────────────────────────────────────────────── */
@@ -43,18 +43,18 @@
     }
     .node .sub { font-size: 0.6rem; opacity: 0.72; display: block; margin-top: 1px; }
 
-    .llm     { background: #3b1f6e; border-color: #7c3aed; color: #e9d5ff; }
-    .classla { background: #0c3547; border-color: #0891b2; color: #bae6fd; }
-    .trf     { background: #064e3b; border-color: #059669; color: #a7f3d0; }
-    .stat    { background: #451a03; border-color: #d97706; color: #fde68a; }
-    .whisper { background: #450a0a; border-color: #dc2626; color: #fecaca; }
-    .infra   { background: #1e293b; border-color: #334155; color: #cbd5e1; }
-    .hybrid  { background: #1e1b4b; border-color: #6366f1; color: #c7d2fe; }
-    .viz     { background: #1a1f30; border-color: #475569; color: #e2e8f0; }
+    .llm     { background: #f5f3ff; border-color: #7c3aed; color: #5b21b6; }
+    .classla { background: #ecfeff; border-color: #0891b2; color: #155e75; }
+    .trf     { background: #f0fdf4; border-color: #059669; color: #166534; }
+    .stat    { background: #fffbeb; border-color: #d97706; color: #92400e; }
+    .whisper { background: #fef2f2; border-color: #dc2626; color: #991b1b; }
+    .infra   { background: #f1f5f9; border-color: #475569; color: #334155; }
+    .hybrid  { background: #eef2ff; border-color: #6366f1; color: #3730a3; }
+    .viz     { background: #ffffff; border-color: #94a3b8; color: #475569; }
 
     /* ── Arrows ──────────────────────────────────────────────────────────── */
-    .arr   { color: #475569; font-size: 0.95rem; padding: 0 4px; flex-shrink: 0; display: flex; align-items: center; }
-    .v-arr { color: #475569; font-size: 0.95rem; text-align: center; padding: 5px 0; width: 100%; }
+    .arr   { color: #94a3b8; font-size: 0.95rem; padding: 0 4px; flex-shrink: 0; display: flex; align-items: center; }
+    .v-arr { color: #94a3b8; font-size: 0.95rem; text-align: center; padding: 5px 0; width: 100%; }
 
     /* ── Rows ────────────────────────────────────────────────────────────── */
     .h-row { display: flex; align-items: center; justify-content: center; width: 100%; }
@@ -62,15 +62,15 @@
 
     /* ── Phase containers ────────────────────────────────────────────────── */
     .phase {
-      background: #181c2a;
-      border: 1px solid #2d3348;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
       border-radius: 10px;
       padding: 0.85rem 1rem;
       width: 100%;
     }
     .phase-label {
       font-size: 0.68rem;
-      color: #64748b;
+      color: #94a3b8;
       text-align: center;
       margin-bottom: 0.6rem;
       font-weight: 600;
@@ -94,7 +94,7 @@
 </head>
 <body>
 
-<h1>Serbian Language Analyzer — System Architecture</h1>
+<h1>SLAVA Flow Chart</h1>
 <p class="subtitle">Data flow from user input to final JSON output</p>
 
 <div class="legend">
@@ -103,7 +103,7 @@
   <div class="leg"><div class="dot" style="background:#059669"></div>Transformer (BERT)</div>
   <div class="leg"><div class="dot" style="background:#d97706"></div>Statistical</div>
   <div class="leg"><div class="dot" style="background:#dc2626"></div>Whisper</div>
-  <div class="leg"><div class="dot" style="background:#334155"></div>Infrastructure</div>
+  <div class="leg"><div class="dot" style="background:#475569"></div>Infrastructure</div>
 </div>
 
 <div class="diagram">
@@ -151,8 +151,8 @@
     <!-- Row-break: small corner arrow on the right side -->
     <div class="row-break">
       <svg width="18" height="22" viewBox="0 0 18 22">
-        <path d="M 9 0 L 9 14 L 1 14" stroke="#475569" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <polygon points="-3,11 3,11 0,17" fill="#475569"/>
+        <path d="M 9 0 L 9 14 L 1 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="-3,11 3,11 0,17" fill="#94a3b8"/>
       </svg>
     </div>
 

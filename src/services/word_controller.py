@@ -3,10 +3,10 @@ import csv
 import urllib.parse
 import re
 
-from app_modules.pipeline import get_nlp
-from app_modules.transliteration import cyr_to_lat, words_to_latin, words_to_cyrillic
+from src.core.pipeline import get_nlp
+from src.core.transliteration import cyr_to_lat, words_to_latin, words_to_cyrillic
 
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 _DEFAULT_WORDNET_CSV = str(_DATA_DIR / "Serbian-Wordnet.csv")
 
 

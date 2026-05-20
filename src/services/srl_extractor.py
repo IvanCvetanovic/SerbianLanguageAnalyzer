@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from app_modules.pipeline import get_nlp
-from app_modules.model_config import get_config, OLLAMA_URL
+from src.core.pipeline import get_nlp
+from src.core.model_config import get_config, OLLAMA_URL
 
 
 ROLE_SET = [

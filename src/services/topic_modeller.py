@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-from app_modules.transliteration import lat_to_cyr
+from src.core.transliteration import lat_to_cyr
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _DEFAULT_STOPWORDS_CSV = str(_DATA_DIR / "SSWdictionary.csv")

@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 from openai import OpenAI
 
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config.json"
 _thread_local = threading.local()
 
 

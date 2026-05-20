@@ -188,28 +188,21 @@ Then open `http://<remote-machine-ip>:5000` in your browser. With a GPU availabl
 ```
 ├── app.py                        # Flask/APIFlask application, UI routes
 ├── config.json                   # Runtime config (not committed — see config.example.json)
-├── app_modules/
-│   ├── analysis_pipeline.py      # run_analysis() + all NLP singletons
-│   ├── job_store.py              # Shared jobs/progress dicts and ThreadPoolExecutor
-│   ├── api_v1.py                 # REST API blueprint (/api/v1/...)
-│   ├── api_schema.py             # Marshmallow schemas + result formatter
-│   ├── model_config.py           # Config loading/saving, OLLAMA_URL constant
-│   ├── pipeline.py               # Classla NLP pipeline singleton
-│   ├── transliteration.py        # Latin ↔ Cyrillic helpers (shared)
-│   ├── word_controller.py        # Tokenization, lemmatization, morphology, definitions
-│   ├── text_analyzer.py          # NER, dependency parsing, dependency tree visualizer
-│   ├── sentiment_analyzer.py
-│   ├── hate_speech_detector.py
-│   ├── absa_analyzer.py
-│   ├── srl_extractor.py
-│   ├── summarizer.py             # Extractive (TF-IDF/TextRank) + abstractive (LLM)
-│   ├── topic_modeller.py         # LDA topic modelling
-│   ├── local_translator.py       # SR → EN via LLM
-│   ├── grammar_corrector.py      # Grammar correction + change explanation via LLM
-│   ├── graph_maker.py            # Word cloud, NER heatmap, POS sunburst
-│   ├── speech_to_text.py         # Whisper transcription
-│   ├── sentence_generator.py
-│   └── fairy_tales.py
+├── src/
+│   ├── api/                      # REST API blueprint and schemas
+│   │   ├── v1.py
+│   │   └── schema.py
+│   ├── services/                 # Business logic and NLP engines
+│   │   ├── analysis_pipeline.py
+│   │   ├── sentiment_analyzer.py
+│   │   ├── word_controller.py
+│   │   └── ... (other analyzers)
+│   ├── core/                     # Core logic and shared config
+│   │   ├── pipeline.py
+│   │   ├── model_config.py
+│   │   └── transliteration.py
+│   └── infrastructure/           # Task management and job storage
+│       └── job_store.py
 ├── data/
 │   └── Serbian-Wordnet.csv       # Local word definitions
 ├── static/

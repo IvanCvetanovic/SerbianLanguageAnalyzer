@@ -1,20 +1,20 @@
 import logging
 from collections import Counter
 
-from app_modules.local_translator import LocalSrToEnTranslator
-from app_modules.sentiment_analyzer import SerbianSentimentAnalyzer
-from app_modules.summarizer import extractive_summary, abstractive_summary
-from app_modules.topic_modeller import get_topics
-from app_modules.word_controller import WordController
-from app_modules.text_analyzer import TextAnalyzer
-from app_modules.graph_maker import Visualizer
-from app_modules.hate_speech_detector import analyze_hate_speech
-from app_modules.grammar_corrector import correct_sentence as grammar_correct_sentence
-from app_modules.absa_analyzer import SerbianABSA, enrich_absa_with_translations
-from app_modules.srl_extractor import SerbianSRLExtractor
-from app_modules.speech_to_text import VoiceTranscriber
-from app_modules.pipeline import get_nlp
-from app_modules.model_config import set_config_override
+from src.services.local_translator import LocalSrToEnTranslator
+from src.services.sentiment_analyzer import SerbianSentimentAnalyzer
+from src.services.summarizer import extractive_summary, abstractive_summary
+from src.services.topic_modeller import get_topics
+from src.services.word_controller import WordController
+from src.services.text_analyzer import TextAnalyzer
+from src.services.graph_maker import Visualizer
+from src.services.hate_speech_detector import analyze_hate_speech
+from src.services.grammar_corrector import correct_sentence as grammar_correct_sentence
+from src.services.absa_analyzer import SerbianABSA, enrich_absa_with_translations
+from src.services.srl_extractor import SerbianSRLExtractor
+from src.services.speech_to_text import VoiceTranscriber
+from src.core.pipeline import get_nlp
+from src.core.model_config import set_config_override
 
 _log = logging.getLogger(__name__)
 

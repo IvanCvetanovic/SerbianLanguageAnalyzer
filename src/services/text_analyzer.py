@@ -1,5 +1,5 @@
 from pyvis.network import Network
-from app_modules.pipeline import get_nlp
+from src.core.pipeline import get_nlp
 
 class TextAnalyzer:
     def __init__(self):

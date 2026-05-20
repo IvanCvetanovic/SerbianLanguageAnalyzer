@@ -1,7 +1,7 @@
 import os
 import threading
 import whisper
-from app_modules.model_config import get_config
+from src.core.model_config import get_config
 
 
 class VoiceTranscriber:

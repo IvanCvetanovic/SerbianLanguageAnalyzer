@@ -7,9 +7,9 @@ from pathlib import Path
 from apiflask import APIBlueprint, abort
 from flask import request, jsonify
 
-from app_modules.job_store import jobs, progress, executor, prune_old_jobs
-from app_modules.model_config import get_config
-from app_modules.analysis_pipeline import (
+from src.infrastructure.job_store import jobs, progress, executor, prune_old_jobs
+from src.core.model_config import get_config
+from src.services.analysis_pipeline import (
     run_analysis,
     sentiment_analyzer,
     absa_analyzer,
@@ -18,11 +18,11 @@ from app_modules.analysis_pipeline import (
     translator,
     transcriber,
 )
-from app_modules.summarizer import extractive_summary, abstractive_summary
-from app_modules.topic_modeller import get_topics
-from app_modules.grammar_corrector import correct_sentence, explain_corrections
-from app_modules.hate_speech_detector import analyze_hate_speech
-from app_modules.api_schema import (
+from src.services.summarizer import extractive_summary, abstractive_summary
+from src.services.topic_modeller import get_topics
+from src.services.grammar_corrector import correct_sentence, explain_corrections
+from src.services.hate_speech_detector import analyze_hate_speech
+from src.api.schema import (
     AnalyzeIn, TextIn, ExplainIn, ModelConfigIn,
     JobCreatedOut, JobStatusOut,
     SentimentOut, GrammarOut, ExplainOut,

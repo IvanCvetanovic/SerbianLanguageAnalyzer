@@ -4,9 +4,9 @@ import re
 import threading
 from dataclasses import dataclass
 from typing import List, Sequence, Union
+import re
 import requests
-from app_modules.model_config import get_config, get_openai_client, OLLAMA_URL
-
+from src.core.model_config import get_config, get_openai_client, OLLAMA_URL
 _THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
 
 @dataclass

@@ -8,12 +8,12 @@ from datetime import datetime
 from apiflask import APIFlask
 from flask import render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from app_modules.sentence_generator import SentenceGenerator
-from app_modules.fairy_tales import FairyTale
-from app_modules.model_config import get_config, save_config, get_backend_description
-from app_modules.job_store import jobs, progress, executor, prune_old_jobs
-from app_modules.analysis_pipeline import run_analysis, transcriber
-from app_modules.api_v1 import api_v1
+from src.services.sentence_generator import SentenceGenerator
+from src.services.fairy_tales import FairyTale
+from src.core.model_config import get_config, save_config, get_backend_description
+from src.infrastructure.job_store import jobs, progress, executor, prune_old_jobs
+from src.services.analysis_pipeline import run_analysis, transcriber
+from src.api.v1 import api_v1
 
 import pyvis
 
