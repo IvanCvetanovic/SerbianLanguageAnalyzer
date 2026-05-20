@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from src.services.sentence_generator import SentenceGenerator
 from src.services.fairy_tales import FairyTale
 from src.core.model_config import get_config, save_config
-from src.infrastructure.job_store import jobs, progress, executor, prune_old_jobs
+from src.infrastructure.task_service import task_service
 from src.services.analysis_pipeline import run_analysis, transcriber
 from src.services.speech_to_text import get_whisper_status, start_whisper_background_loading
 from src.core.constants import WHISPER_MODELS, MAX_INPUT_CHARS
@@ -73,14 +73,7 @@ def home():
             )
             return render_template("index.html", **view_data)
 
-        prune_old_jobs()
-        job_id = str(uuid.uuid4())
-        progress[job_id] = {"pct": 0, "stage": "Queued", "status": "running"}
-        future = executor.submit(run_analysis, input_string, selected_features, job_id, progress)
-        jobs[job_id] = {
-            "future": future, "status": "running", "result": None,
-            "created_at": datetime.utcnow(), "error": None,
-        }
+        job_id = task_service.submit_task(run_analysis, input_string, selected_features)
         return render_template("index.html", job_id=job_id, **view_data)
 
     return render_template("index.html", **view_data)
@@ -88,7 +81,7 @@ def home():
 
 @ui_bp.route("/progress/<job_id>")
 def get_progress(job_id):
-    info = progress.get(job_id)
+    info = task_service.get_progress(job_id)
     if not info:
         return jsonify({"error": "unknown job id"}), 404
     return jsonify(info)
@@ -96,29 +89,19 @@ def get_progress(job_id):
 
 @ui_bp.route("/results/<job_id>")
 def show_results(job_id):
-    if job_id not in progress:
+    if not task_service.get_progress(job_id):
         return "Job not found or expired.", 404
-    job = jobs.get(job_id)
-    if job:
-        fut = job["future"]
-        if fut.done() and job.get("result") is None:
-            try:
-                job["result"] = fut.result()
-                job["status"] = "finished"
-                if progress[job_id].get("status") != "failed":
-                    progress[job_id].update({"status": "finished", "pct": 100, "stage": "Finished"})
-            except Exception as e:
-                job["status"] = "failed"
-                progress[job_id].update({"status": "failed", "stage": "Error", "error_message": str(e)})
+    
+    task_service.update_job_result(job_id)
     return render_template("index.html", job_id=job_id, original_input="", selected_features=[])
 
 
 @ui_bp.route("/dependency_tree/<job_id>")
 def get_dependency_tree(job_id):
-    html = (progress.get(job_id, {})
-                    .get("sections", {})
-                    .get("dependency_tree", {})
-                    .get("dependency_tree_img"))
+    prog = task_service.get_progress(job_id)
+    html = (prog.get("sections", {})
+                .get("dependency_tree", {})
+                .get("dependency_tree_img") if prog else None)
     if not html:
         return "Dependency tree not available.", 404
     return html, 200, {"Content-Type": "text/html; charset=utf-8"}

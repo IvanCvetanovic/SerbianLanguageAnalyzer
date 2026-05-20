@@ -1,28 +1,6 @@
-import csv
-import re
-from pathlib import Path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-from src.core.transliteration import lat_to_cyr
-
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-_DEFAULT_STOPWORDS_CSV = str(_DATA_DIR / "SSWdictionary.csv")
-
-
-def load_serbian_stopwords(csv_path: str) -> list[str]:
-    stopwords = []
-    with open(csv_path, encoding="utf-8") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if not row or not row[0].strip():
-                continue
-            w = row[0].strip().lower()
-            w = re.sub(r'^[^\w]+|[^\w]+$', '', w)
-            if len(w) >= 2:
-                stopwords.append(w)
-                # Add Cyrillic transliteration to support both scripts
-                stopwords.append(lat_to_cyr(w))
-    return list(set(stopwords))
+from src.infrastructure.repositories import default_repo
 
 
 def translate_to_english(text_or_texts, translator):
@@ -37,10 +15,10 @@ def get_topics(
     translator,
     n_topics: int = 1,
     n_top_words: int = 8,
-    stopwords_csv: str = _DEFAULT_STOPWORDS_CSV,
+    repository=default_repo,
     translate: bool = True
 ) -> list[list[str]]:
-    sr_stop = load_serbian_stopwords(stopwords_csv)
+    sr_stop = repository.get_serbian_stopwords()
     vectorizer = CountVectorizer(
         stop_words=sr_stop,
         token_pattern=r"(?u)\b\w\w+\b",
@@ -57,15 +35,19 @@ def get_topics(
     terms = vectorizer.get_feature_names_out()
     topics = []
 
-    for comp in lda.components_:
-        top_idxs = comp.argsort()[-n_top_words:][::-1]
-        sr_words = [terms[i] for i in top_idxs]
-        
-        if translate:
-            en_words = translate_to_english(sr_words, translator)
-            formatted_topic = [f"{sr} - ({en})" for sr, en in zip(sr_words, en_words)]
-            topics.append(formatted_topic)
+    for topic_idx, topic in enumerate(lda.components_):
+        top_indices = topic.argsort()[: -n_top_words - 1 : -1]
+        top_words = [terms[i] for i in top_indices]
+
+        if translate and translator:
+            try:
+                translated_words = translate_to_english(top_words, translator)
+                # Pair them up for the UI to display both
+                combined = [f"{sr} ({en})" for sr, en in zip(top_words, translated_words)]
+                topics.append(combined)
+            except Exception:
+                topics.append(top_words)
         else:
-            topics.append(sr_words)
+            topics.append(top_words)
 
     return topics

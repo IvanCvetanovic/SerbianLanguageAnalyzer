@@ -7,7 +7,7 @@ from pathlib import Path
 from apiflask import APIBlueprint, abort
 from flask import request, jsonify
 
-from src.infrastructure.job_store import jobs, progress, executor, prune_old_jobs
+from src.infrastructure.task_service import task_service
 from src.core.model_config import get_config
 from src.services.analysis_pipeline import (
     run_analysis,
@@ -66,15 +66,13 @@ def _build_config_override(mc: dict | None) -> dict | None:
     ),
 )
 def analyze(body):
-    prune_old_jobs()
-    job_id = str(uuid.uuid4())
-    progress[job_id] = {'pct': 0, 'stage': 'Queued', 'status': 'running'}
     config_override = _build_config_override(body.get('model_config'))
-    future = executor.submit(run_analysis, body['text'], body['features'], job_id, progress, config_override)
-    jobs[job_id] = {
-        'future': future, 'status': 'running', 'result': None,
-        'created_at': datetime.utcnow(), 'error': None,
-    }
+    job_id = task_service.submit_task(
+        run_analysis,
+        body['text'],
+        body['features'],
+        config_override=config_override
+    )
     return {'job_id': job_id, 'poll_url': f'/api/v1/jobs/{job_id}'}
 
 
@@ -85,20 +83,13 @@ def analyze(body):
     description='Returns current progress. When `status=finished`, the `result` field contains the full analysis.',
 )
 def get_job(job_id):
-    if job_id not in progress:
+    info = task_service.get_progress(job_id)
+    if not info:
         abort(404, message='Job not found or expired.')
-    info = dict(progress[job_id])
-    job  = jobs.get(job_id)
-    if job and job['future'].done() and job.get('result') is None:
-        try:
-            job['result'] = job['future'].result()
-            job['status'] = 'finished'
-            if info.get('status') != 'failed':
-                info.update({'status': 'finished', 'pct': 100, 'stage': 'Finished'})
-                progress[job_id].update(info)
-        except Exception as e:
-            info.update({'status': 'failed', 'error_message': str(e)})
-            progress[job_id].update(info)
+    
+    info = dict(info) # copy for local mutation
+    job = task_service.update_job_result(job_id)
+    
     if info.get('status') == 'finished' and job and job.get('result'):
         info['result'] = format_result(job['result'])
     return info
@@ -259,14 +250,7 @@ def api_transcribe(query):
     if query.get('analyze'):
         raw_features = query.get('features') or []
         features = [f for f in raw_features if f] or list(VALID_FEATURES)
-        prune_old_jobs()
-        job_id = str(uuid.uuid4())
-        progress[job_id] = {'pct': 0, 'stage': 'Queued', 'status': 'running'}
-        future = executor.submit(run_analysis, text, features, job_id, progress)
-        jobs[job_id] = {
-            'future': future, 'status': 'running', 'result': None,
-            'created_at': datetime.utcnow(), 'error': None,
-        }
+        job_id = task_service.submit_task(run_analysis, text, features)
         return {'text': text, 'job_id': job_id, 'poll_url': f'/api/v1/jobs/{job_id}'}
 
     return {'text': text}

@@ -1,13 +1,9 @@
-from pathlib import Path
-import csv
 import urllib.parse
 import re
 
 from src.core.pipeline import get_nlp
 from src.core.transliteration import cyr_to_lat, words_to_latin, words_to_cyrillic
-
-_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-_DEFAULT_WORDNET_CSV = str(_DATA_DIR / "Serbian-Wordnet.csv")
+from src.infrastructure.repositories import default_repo
 
 
 class WordController:
@@ -65,59 +61,14 @@ class WordController:
     def transliterate_cyrillic_to_latin(words):
         return words_to_latin(words)
 
-    _WORDNET_LATIN_CACHE = {}
-
-    @staticmethod
-    def _load_wordnet_latin(csv_file_path):
-        if csv_file_path in WordController._WORDNET_LATIN_CACHE:
-            return WordController._WORDNET_LATIN_CACHE[csv_file_path]
-
-        known = set()
-        with open(csv_file_path, mode="r", encoding="utf-8") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                if not row:
-                    continue
-                word_cyr = (row[0] or "").strip()
-                if not word_cyr:
-                    continue
-
-                word_lat = cyr_to_lat(word_cyr).lower()
-                known.add(word_lat)
-
-        WordController._WORDNET_LATIN_CACHE[csv_file_path] = known
-        return known
-
-    _WORDNET_DICT_CACHE = {}
-
-    @staticmethod
-    def _load_wordnet_dict(csv_file_path):
-        if csv_file_path in WordController._WORDNET_DICT_CACHE:
-            return WordController._WORDNET_DICT_CACHE[csv_file_path]
-
-        wordnet_dict = {}
-        with open(csv_file_path, mode="r", encoding="utf-8") as file:
-            reader = csv.reader(file)
-            for row in reader:
-                if len(row) < 3:
-                    continue
-                word = row[0].strip()
-                definition = row[2].strip()
-                wordnet_dict.setdefault(word, []).append(definition)
-
-        WordController._WORDNET_DICT_CACHE[csv_file_path] = wordnet_dict
-        return wordnet_dict
-
     @staticmethod
     def process_links_for_lemmas(
         lemmas,
-        csv_file_path=_DEFAULT_WORDNET_CSV,
+        repository=default_repo,
         safe_default="/",
     ):
         base_url = "https://en.pons.com/translate/serbian-english/"
         allowed = re.compile(r"[^0-9A-Za-zŠĐČĆŽšđčćž]+")
-
-        known_words_latin = WordController._load_wordnet_latin(csv_file_path)
 
         results = []
         for lemma in (lemmas or []):
@@ -143,7 +94,7 @@ class WordController:
 
             token = parts[0]
 
-            if token not in known_words_latin:
+            if not repository.is_word_known(token):
                 results.append(safe_default)
                 continue
 
@@ -155,10 +106,9 @@ class WordController:
     @staticmethod
     def find_local_definitions(
         transliterated_lemmas,
-        csv_file_path=_DEFAULT_WORDNET_CSV,
+        repository=default_repo,
     ):
-        wordnet_dict = WordController._load_wordnet_dict(csv_file_path)
-        return [wordnet_dict.get(lemma, "/") for lemma in transliterated_lemmas]
+        return [repository.get_definitions(lemma) or "/" for lemma in transliterated_lemmas]
 
     @staticmethod
     def get_word_types(words):

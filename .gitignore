@@ -4,4 +4,21 @@ Documentation/
 config.json
 uploads/
 .claude/settings.local.json
-P2 mögliche Erweiterungen.txt
+P2 m\u00f6gliche Erweiterungen.txt
+
+# Local environment and IDEs
+.env
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Project-specific temp/cache files
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
