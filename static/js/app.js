@@ -221,7 +221,11 @@ function renderInput(data) {
 
 function renderGrammar(data) {
   if (!data.grammar_suggestion) {
-    hideEl(document.getElementById('section-grammar'));
+    const emptyHtml = `<div class="summary card-teal" style="margin:0;height:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:10px;padding:20px;">
+      <span style="font-size:1.5rem;">✅</span>
+      <div style="font-weight:600;color:var(--text-main);">No errors found! Your sentence looks correct.</div>
+    </div>`;
+    showSection('section-grammar', emptyHtml);
     return;
   }
 
