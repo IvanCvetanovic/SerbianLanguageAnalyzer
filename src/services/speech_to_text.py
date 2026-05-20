@@ -1,7 +1,20 @@
 import os
 import threading
+from pathlib import Path
 import whisper
 from src.core.model_config import get_config
+
+_whisper_lock  = threading.Lock()
+_whisper_state = {"status": "idle", "model": None, "message": ""}
+
+
+def _is_whisper_cached(model_size: str) -> bool:
+    return (Path.home() / ".cache" / "whisper" / f"{model_size}.pt").exists()
+
+
+def get_whisper_status():
+    with _whisper_lock:
+        return dict(_whisper_state)
 
 
 class VoiceTranscriber:
@@ -41,3 +54,28 @@ class VoiceTranscriber:
             return result["text"].strip()
         except Exception as e:
             return f"An error occurred during transcription: {e}"
+
+
+def _load_whisper_background(transcriber: VoiceTranscriber, model_size: str):
+    cached = _is_whisper_cached(model_size)
+    msg = ("Loading model into memory…" if cached
+           else f"Downloading {model_size} model — this may take a few minutes…")
+    with _whisper_lock:
+        _whisper_state.update({"status": "loading", "model": model_size, "message": msg})
+    try:
+        transcriber.load(model_size)
+        with _whisper_lock:
+            _whisper_state.update({"status": "ready", "model": model_size,
+                                   "message": f"{model_size.capitalize()} model ready."})
+    except Exception as e:
+        with _whisper_lock:
+            _whisper_state.update({"status": "error", "model": model_size,
+                                   "message": f"Failed to load {model_size}: {e}"})
+
+
+def start_whisper_background_loading(transcriber: VoiceTranscriber, model_size: str):
+    threading.Thread(
+        target=_load_whisper_background,
+        args=(transcriber, model_size),
+        daemon=True,
+    ).start()

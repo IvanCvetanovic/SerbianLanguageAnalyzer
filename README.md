@@ -192,14 +192,17 @@ Then open `http://<remote-machine-ip>:5000` in your browser. With a GPU availabl
 │   ├── api/                      # REST API blueprint and schemas
 │   │   ├── v1.py
 │   │   └── schema.py
+│   ├── ui/                       # Frontend (HTML) routes and logic
+│   │   └── routes.py
 │   ├── services/                 # Business logic and NLP engines
 │   │   ├── analysis_pipeline.py
 │   │   ├── sentiment_analyzer.py
 │   │   ├── word_controller.py
 │   │   └── ... (other analyzers)
-│   ├── core/                     # Core logic and shared config
+│   ├── core/                     # Core logic, constants, and shared config
 │   │   ├── pipeline.py
 │   │   ├── model_config.py
+│   │   ├── constants.py
 │   │   └── transliteration.py
 │   └── infrastructure/           # Task management and job storage
 │       └── job_store.py
