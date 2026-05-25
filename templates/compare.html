@@ -238,13 +238,13 @@
       ));
     }
 
-    // Topics
+    // Keyword extraction
     if (r.topics && r.topics.length) {
       const tags = r.topics.map(t =>
         `<span style="background:rgba(21,101,192,.2);border:1px solid rgba(21,101,192,.4);
                        border-radius:4px;padding:2px 8px;font-size:.8rem;">${escHtml(t)}</span>`
       ).join(' ');
-      parts.push(card('Topics', `<div style="display:flex;flex-wrap:wrap;gap:6px;">${tags}</div>`));
+      parts.push(card('Keyword Extraction', `<div style="display:flex;flex-wrap:wrap;gap:6px;">${tags}</div>`));
     }
 
     // ABSA

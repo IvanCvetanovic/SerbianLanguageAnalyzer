@@ -441,7 +441,14 @@ function renderSrl(data) {
 }
 
 function renderSummaries(data) {
-  if (!data.extractive_summary?.length && !data.abstractive_summary) return;
+  if (!data.extractive_summary?.length && !data.abstractive_summary) {
+    const emptyHtml = `<div class="summary card-orange" style="margin:0;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:10px;padding:20px;">
+      <span style="font-size:1.5rem;">📝</span>
+      <div style="font-weight:600;color:var(--text-main);">Input is too short for a meaningful summary.</div>
+    </div>`;
+    showSection('section-summaries', emptyHtml);
+    return;
+  }
   let html = '<div style="display:flex;gap:20px;flex-wrap:wrap;width:100%;">';
   if (data.extractive_summary?.length) {
     html += '<div style="flex:1;min-width:320px;"><div class="summary card-orange" style="margin:0; height:100%; box-sizing:border-box;"><h2>Extractive Summary</h2><ul>';
@@ -461,7 +468,7 @@ function renderSummaries(data) {
 
 function renderTopics(data) {
   if (!data.topics?.length) return;
-  let html = '<div class="summary card-teal" style="margin:0; width:100%; box-sizing:border-box;"><h2>Topic Modelling</h2><ul>';
+  let html = '<div class="summary card-teal" style="margin:0; width:100%; box-sizing:border-box;"><h2>Keyword Extraction</h2><ul>';
   for (const term of data.topics[0]) html += `<li>${escHtml(term)}</li>`;
   html += '</ul></div>';
   showSection('section-topics', html);
@@ -566,7 +573,7 @@ const SECTION_LABELS = {
   absa:            'Analyzing aspects…',
   srl:             'Extracting semantic roles…',
   summaries:       'Summarizing…',
-  topics:          'Modelling topics…',
+  topics:          'Extracting keywords…',
   words_table:     'Building word table…',
   visuals:         'Generating visualizations…',
   dependency_tree: 'Rendering dependency tree…',

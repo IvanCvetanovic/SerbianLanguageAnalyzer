@@ -18,7 +18,7 @@ from src.services.analysis_pipeline import (
     translator,
     transcriber,
 )
-from src.services.summarizer import extractive_summary, abstractive_summary
+from src.services.summarizer import extractive_summary, abstractive_summary_safe
 from src.services.topic_modeller import get_topics
 from src.services.grammar_corrector import correct_sentence, explain_corrections
 from src.services.hate_speech_detector import analyze_hate_speech
@@ -27,6 +27,7 @@ from src.api.schema import (
     JobCreatedOut, JobStatusOut,
     SentimentOut, GrammarOut, ExplainOut,
     NEROut, SRLOut, ABSAOut, SummarizeOut, TopicsOut,
+    ExtractiveSummaryOut, AbstractiveSummaryResponse,
     TranscribeQueryIn, TranscribeOut, TranslateOut, HateSpeechOut,
     VALID_FEATURES,
     format_result,
@@ -188,20 +189,52 @@ def api_ner(body):
     summary='Text summarization',
     description=(
         'Returns an extractive summary (selected sentences) and an abstractive summary '
-        '(LLM-generated) with an English translation.'
+        '(LLM-generated) with an English translation. '
+        'If the abstractive step fails, `abstractive` is null, `abstractive_error` '
+        'describes the problem, and the extractive summary is still returned. '
+        'Use `/summarize/extractive` or `/summarize/abstractive` to run a single method.'
     ),
 )
 def api_summarize(body):
     text    = body['text']
     ex      = extractive_summary(text, num_sentences=2)
-    ab      = abstractive_summary(text, translator)
+    ab, err = abstractive_summary_safe(text, translator)
     return {
         'extractive': ex,
-        'abstractive': {
-            'text_sr': ab[0] if ab else None,
-            'text_en': ab[1] if ab else None,
-        },
+        'abstractive': {'text_sr': ab[0], 'text_en': ab[1], 'error': None} if ab else None,
+        'abstractive_error': err,
     }
+
+
+@api_v1.post('/summarize/extractive')
+@api_v1.input(TextIn, arg_name='body')
+@api_v1.output(ExtractiveSummaryOut)
+@api_v1.doc(
+    summary='Extractive summary only',
+    description=(
+        'Returns only the extractive summary — key sentences ranked via TextRank. '
+        'Pure Python; does not call the LLM backend.'
+    ),
+)
+def api_summarize_extractive(body):
+    return {'extractive': extractive_summary(body['text'], num_sentences=2)}
+
+
+@api_v1.post('/summarize/abstractive')
+@api_v1.input(TextIn, arg_name='body')
+@api_v1.output(AbstractiveSummaryResponse)
+@api_v1.doc(
+    summary='Abstractive summary only',
+    description=(
+        'Returns only the LLM-generated abstractive summary with an English translation. '
+        'On backend failure, returns null text fields with an `error` message instead of a 500.'
+    ),
+)
+def api_summarize_abstractive(body):
+    ab, err = abstractive_summary_safe(body['text'], translator)
+    if ab:
+        return {'text_sr': ab[0], 'text_en': ab[1], 'error': None}
+    return {'text_sr': None, 'text_en': None, 'error': err}
 
 
 @api_v1.post('/topics')

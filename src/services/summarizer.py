@@ -2,6 +2,7 @@ import re
 import numpy as np
 import networkx as nx
 import requests
+from openai import OpenAIError
 from sklearn.feature_extraction.text import TfidfVectorizer
 from src.core.model_config import get_config, get_openai_client, OLLAMA_URL
 from src.core.transliteration import lat_to_cyr, cyr_to_lat
@@ -49,7 +50,13 @@ def _ollama_generate(prompt: str, temperature: float = 0.2) -> str:
         "stream": False,
         "options": {"temperature": temperature},
     }
-    r = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    try:
+        r = requests.post(OLLAMA_URL, json=payload, timeout=120)
+    except requests.exceptions.ConnectionError:
+        raise RuntimeError(
+            f"Ollama is not running or not reachable at {OLLAMA_URL}. "
+            "Start Ollama before using summarization features."
+        )
     r.raise_for_status()
     return r.json().get("response", "").strip()
 
@@ -93,3 +100,23 @@ def abstractive_summary(text: str, translator, max_len: int = 60, min_len: int =
     summary_latin = cyr_to_lat(summary) if is_latin else summary
     translation = translator.translate(summary_latin, dest="en").text
     return summary_latin, translation
+
+
+def abstractive_summary_safe(text: str, translator) -> tuple[tuple[str, str] | None, str | None]:
+    """Like abstractive_summary, but never raises on an LLM-backend failure.
+
+    Returns (result, error_message): on success error_message is None;
+    on backend failure result is None and error_message describes the problem.
+    """
+    try:
+        return abstractive_summary(text, translator), None
+    except RuntimeError as e:
+        # Raised by our own backends (summarizer / translator) with an
+        # already user-facing message — e.g. "Ollama is not running ...".
+        return None, str(e)
+    except (requests.exceptions.RequestException, OpenAIError) as e:
+        return None, (
+            "Abstractive summarization is unavailable: the LLM backend returned "
+            f"an error ({e.__class__.__name__}). The local model may be out of "
+            "memory, or the backend may be offline."
+        )

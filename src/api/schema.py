@@ -149,10 +149,26 @@ class ABSAOut(Schema):
 class AbstractiveSummaryOut(Schema):
     text_sr = String(allow_none=True)
     text_en = String(allow_none=True)
+    error   = String(allow_none=True,
+                     metadata={'description': 'Set when abstractive summarization failed; null on success.'})
+
+# Standalone response for POST /summarize/abstractive. Same fields as
+# AbstractiveSummaryOut, but a distinct component so the schema is not
+# registered twice (nested in SummarizeOut + direct output) — which would
+# trigger an apispec duplicate-registration warning.
+class AbstractiveSummaryResponse(AbstractiveSummaryOut):
+    pass
+
+class ExtractiveSummaryOut(Schema):
+    extractive = List(String())
 
 class SummarizeOut(Schema):
-    extractive  = List(String())
-    abstractive = Nested(AbstractiveSummaryOut, allow_none=True)
+    extractive        = List(String())
+    abstractive       = Nested(AbstractiveSummaryOut, allow_none=True)
+    abstractive_error = String(
+        allow_none=True,
+        metadata={'description': 'Set when the abstractive step failed; the extractive summary is still returned.'},
+    )
 
 
 class TopicsOut(Schema):
