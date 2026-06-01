@@ -4,13 +4,19 @@
   <button type="button" class="random-btn" onclick="fetchRandomSentence()">Random</button>
   <button type="button" class="icon-btn" id="mic-btn" title="Analyze with microphone">🎤</button>
 
+  {% set sf = selected_features or [] %}
   <div class="feature-options">
-    <label><input type="checkbox" name="features" value="translation" checked> Translation</label>
-    <label><input type="checkbox" name="features" value="summaries" checked> Summaries</label>
-    <label><input type="checkbox" name="features" value="topic" checked> Keyword Extraction</label>
-    <label><input type="checkbox" name="features" value="visuals" checked> Visualizations</label>
-    <label><input type="checkbox" name="features" value="graphs" checked> Graphs / Tree</label>
-    <label><input type="checkbox" name="features" value="grammar" checked> Grammar correction</label>
+    <label><input type="checkbox" name="features" value="translation" {% if 'translation' in sf %}checked{% endif %}> Translation</label>
+    <label><input type="checkbox" name="features" value="summaries"   {% if 'summaries'   in sf %}checked{% endif %}> Summaries</label>
+    <label><input type="checkbox" name="features" value="topic"       {% if 'topic'       in sf %}checked{% endif %}> Keyword Extraction</label>
+    <label><input type="checkbox" name="features" value="visuals"     {% if 'visuals'     in sf %}checked{% endif %}> Visualizations</label>
+    <label><input type="checkbox" name="features" value="graphs"      {% if 'graphs'      in sf %}checked{% endif %}> Graphs / Tree</label>
+    <label><input type="checkbox" name="features" value="grammar"     {% if 'grammar'     in sf %}checked{% endif %}> Grammar correction</label>
+    <label><input type="checkbox" name="features" value="sentiment"   {% if 'sentiment'   in sf %}checked{% endif %}> Sentiment</label>
+    <label><input type="checkbox" name="features" value="hate"        {% if 'hate'        in sf %}checked{% endif %}> Abuse detection</label>
+    <label><input type="checkbox" name="features" value="absa"        {% if 'absa'        in sf %}checked{% endif %}> ABSA</label>
+    <label><input type="checkbox" name="features" value="srl"         {% if 'srl'         in sf %}checked{% endif %}> SRL</label>
+    <label><input type="checkbox" name="features" value="table"       {% if 'table'       in sf %}checked{% endif %}> Word table</label>
   </div>
 </form>
 

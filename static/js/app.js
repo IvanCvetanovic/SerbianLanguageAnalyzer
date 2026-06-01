@@ -479,22 +479,33 @@ function renderWordsTable(data) {
   const nerMap = {};
   for (const n of (data.ner_results || [])) nerMap[n.text] = n.entity;
   let html = `<table style="font-size:.88em;"><thead><tr>
-    <th>Original Word</th><th>Translation</th><th>Lemma (Base Form)</th>
-    <th>Local Definition</th><th>Online Definition</th><th>Word Type</th>
-    <th>Number</th><th>Person</th><th>Case</th><th>Gender</th>
-    <th>Head</th><th>Dependency Relation</th><th>Named Entity</th>
+    <th title="Original Word">Word</th><th title="Translation">Trans.</th><th title="Lemma (Base Form)">Lemma</th>
+    <th title="Local Definition">Def (L)</th><th title="Online Definition">Def (O)</th><th title="Word Type">Type</th>
+    <th title="Number">Num.</th><th title="Person">Pers.</th><th title="Case">Case</th><th title="Gender">Gen.</th>
+    <th title="Head">Head</th><th title="Dependency Relation">Rel.</th><th title="Named Entity">NER</th>
   </tr></thead><tbody>`;
   for (let i = 0; i < data.words.length; i++) {
     const w = data.words[i];
     const z = data.zipped_data[i];
+    
+    // Compact link button
     const link = z[3] && z[3] !== '/'
-      ? `<a href="${escHtml(z[3])}" target="_blank">${escHtml(z[3])}</a>`
+      ? `<a href="${escHtml(z[3])}" target="_blank" class="compact-link" title="${escHtml(z[3])}">🔗 Open</a>`
       : '/';
+
+    // Truncate Local Definition
+    let localDef = String(z[2] || '/');
+    let displayDef = localDef;
+    if (localDef.length > 50) displayDef = localDef.substring(0, 47) + '...';
+    const defCell = (localDef !== '/') 
+      ? `<td title="${escHtml(localDef)}">${escHtml(displayDef)}</td>`
+      : `<td>/</td>`;
+
     html += `<tr>
       <td>${escHtml(w)}</td>
       <td>${escHtml(z[0])}</td>
       <td>${escHtml(z[1])}</td>
-      <td>${escHtml(String(z[2]))}</td>
+      ${defCell}
       <td>${link}</td>
       <td>${escHtml(z[4])}</td>
       <td>${escHtml(z[5])}</td>
@@ -580,8 +591,19 @@ const SECTION_LABELS = {
 };
 
 // Features that always produce a section vs. those gated on a checkbox
-const ALWAYS_SECTIONS  = ['input', 'sentiment', 'hate_speech', 'absa', 'srl', 'words_table'];
-const FEATURE_SECTIONS = { grammar: 'grammar', summaries: 'summaries', topic: 'topics', visuals: 'visuals', graphs: 'dependency_tree' };
+const ALWAYS_SECTIONS  = ['input'];
+const FEATURE_SECTIONS = {
+  grammar:   'grammar',
+  summaries: 'summaries',
+  topic:     'topics',
+  visuals:   'visuals',
+  graphs:    'dependency_tree',
+  sentiment: 'sentiment',
+  hate:      'hate_speech',
+  absa:      'absa',
+  srl:       'srl',
+  table:     'words_table',
+};
 
 function sectionElId(key) {
   // section keys use underscores; HTML IDs use 'section-' + dashes

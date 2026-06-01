@@ -38,7 +38,8 @@ def home():
         "pos_sunburst_image": None, "error_message": None,
         "sentiment": None, "sentence_sentiments": [],
         "grammar_suggestion": None, "grammar_applied": False,
-        "selected_features": ["translation", "summaries", "topic", "visuals", "graphs", "grammar"],
+        "selected_features": ["translation", "summaries", "topic", "visuals", "graphs", "grammar",
+                              "sentiment", "hate", "absa", "srl", "table"],
         "grammar_error": None,
     }
 
@@ -64,6 +65,10 @@ def home():
 
         if not input_string:
             view_data["error_message"] = "Input cannot be empty!"
+            return render_template("index.html", **view_data)
+
+        if not selected_features:
+            view_data["error_message"] = "Pick at least one feature to analyze."
             return render_template("index.html", **view_data)
 
         if len(input_string) > MAX_INPUT_CHARS:

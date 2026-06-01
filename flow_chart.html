@@ -7,41 +7,49 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #f8fafc;
+      background: white;
       color: #1e293b;
       font-family: 'Segoe UI', system-ui, sans-serif;
-      padding: 2rem;
+      padding: 1rem;
+      font-weight: bold;
     }
 
-    h1 { text-align: center; font-size: 1.4rem; color: #0f172a; margin-bottom: 0.3rem; }
-    .subtitle { text-align: center; color: #64748b; font-size: 0.82rem; margin-bottom: 1.5rem; }
+    h1 { text-align: center; font-size: 2.8rem; color: #0f172a; margin-bottom: 0.5rem; }
+    .subtitle { text-align: center; color: #64748b; font-size: 1.5rem; margin-bottom: 2rem; }
 
     /* ── Legend ──────────────────────────────────────────────────────────── */
-    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-bottom: 2rem; font-size: 0.78rem; }
-    .leg { display: flex; align-items: center; gap: 0.35rem; color: #475569; }
-    .dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; margin-bottom: 2.5rem; font-size: 1.4rem; }
+    .leg { display: flex; align-items: center; gap: 0.5rem; color: #475569; }
+    .dot { width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; }
 
     /* ── Diagram ─────────────────────────────────────────────────────────── */
     .diagram {
       display: flex;
       flex-direction: column;
       align-items: center;
-      max-width: 1100px;
+      max-width: 1600px;
       margin: 0 auto;
-      gap: 0;
+      gap: 1rem;
     }
 
     /* ── Nodes ───────────────────────────────────────────────────────────── */
     .node {
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-size: 0.7rem;
+      border-radius: 10px;
+      padding: 15px 20px;
+      font-size: 1.5rem;
       text-align: center;
-      border: 1.5px solid;
-      line-height: 1.45;
+      border: 4px solid;
+      line-height: 1.3;
       flex-shrink: 0;
+      width: 300px;
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-weight: bold;
     }
-    .node .sub { font-size: 0.6rem; opacity: 0.72; display: block; margin-top: 1px; }
+    .node .sub { font-size: 1.2rem; opacity: 1; display: block; margin-top: 6px; font-weight: bold; }
+    .node-icon { width: 32px; height: 32px; vertical-align: middle; margin-right: 8px; margin-bottom: 4px; }
 
     .llm     { background: #f5f3ff; border-color: #7c3aed; color: #5b21b6; }
     .classla { background: #ecfeff; border-color: #0891b2; color: #155e75; }
@@ -53,42 +61,35 @@
     .viz     { background: #ffffff; border-color: #94a3b8; color: #475569; }
 
     /* ── Arrows ──────────────────────────────────────────────────────────── */
-    .arr   { color: #94a3b8; font-size: 0.95rem; padding: 0 4px; flex-shrink: 0; display: flex; align-items: center; }
-    .v-arr { color: #94a3b8; font-size: 0.95rem; text-align: center; padding: 5px 0; width: 100%; }
-
-    /* ── Rows ────────────────────────────────────────────────────────────── */
-    .h-row { display: flex; align-items: center; justify-content: center; width: 100%; }
-    .h-pair { display: flex; gap: 1rem; justify-content: center; align-items: stretch; }
+    .arr   { color: #94a3b8; font-size: 3rem; font-weight: bold; display: flex; align-items: center; justify-content: center; width: 50px; }
+    .v-arr { color: #94a3b8; font-size: 3rem; font-weight: bold; text-align: center; padding: 15px 0; width: 100%; height: 70px; display: flex; align-items: center; justify-content: center; }
 
     /* ── Phase containers ────────────────────────────────────────────────── */
     .phase {
       background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-      width: 100%;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      padding: 2rem;
+      width: fit-content;
+      max-width: 1550px;
+      margin: 0 auto;
     }
     .phase-label {
-      font-size: 0.68rem;
-      color: #94a3b8;
+      font-size: 1.8rem;
+      color: #64748b;
       text-align: center;
-      margin-bottom: 0.6rem;
-      font-weight: 600;
+      margin-bottom: 2rem;
+      font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.15em;
     }
-
-    /* ── Row-break indicator (step 5 → step 6) ──────────────────────────── */
-    .row-break {
+    
+    .grid-phase {
       display: flex;
-      justify-content: flex-end;
+      flex-wrap: wrap; 
+      justify-content: center;
       align-items: center;
-      width: 100%;
-      padding-right: 6px;
-      height: 22px;
-    }
-    .row-break svg {
-      overflow: visible;
+      gap: 25px 15px; 
     }
   </style>
 </head>
@@ -108,25 +109,24 @@
 
 <div class="diagram">
 
-  <!-- Input -->
-  <div class="h-pair">
-    <div class="node infra">📝 Text Input<br><span class="sub">Latin or Cyrillic</span></div>
-    <div class="node whisper">🎤 Audio File → Whisper<br><span class="sub">WAV / WebM / MP3 · configurable model size (default: medium)</span></div>
-  </div>
-
-  <div class="v-arr">↓</div>
-
-  <div class="node infra" style="min-width:280px">Serbian Text String<span class="sub">optional: per-request model config override</span></div>
-
-  <div class="v-arr">↓</div>
-
-  <div class="node infra" style="min-width:280px">Validation · max 15,000 characters</div>
-
-  <div class="v-arr">↓</div>
-
-  <div class="node infra" style="min-width:340px; line-height:1.6">
-    ⚙️ Async Job Queue · ThreadPoolExecutor · 1 worker
-    <span class="sub">Returns job_id immediately · frontend polls /progress/{job_id}</span>
+  <!-- Input Header -->
+  <div class="grid-phase">
+    <div class="node infra">
+      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+      Text Input<br><span class="sub">Latin or Cyrillic</span>
+    </div>
+    <div class="arr">→</div>
+    <div class="node whisper">
+      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      Audio → Whisper<br><span class="sub">WAV/MP3 · medium</span>
+    </div>
+    <div class="arr">→</div>
+    <div class="node infra">Validation & String<br><span class="sub">max 15k chars</span></div>
+    <div class="arr">→</div>
+    <div class="node infra">
+      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></circle></svg>
+      Async Job Queue<br><span class="sub">ThreadPoolExecutor</span>
+    </div>
   </div>
 
   <div class="v-arr">↓</div>
@@ -134,39 +134,26 @@
   <!-- ── Phase 1 ──────────────────────────────────────────────────────── -->
   <div class="phase">
     <div class="phase-label">Phase 1 — Document-level Analysis</div>
-
-    <!-- Row 1: steps 1–5 -->
-    <div class="h-row">
-      <div class="node llm">1· Grammar Correction<br><span class="sub">LLM (default: Llama 3.1)</span></div>
+    <div class="grid-phase">
+      <div class="node llm">1· Grammar<br><span class="sub">LLM</span></div>
       <div class="arr">→</div>
       <div class="node classla">2· Tokenization<br><span class="sub">CLASSLA</span></div>
       <div class="arr">→</div>
-      <div class="node llm">3· Translation sr→en<br><span class="sub">LLM (default: Llama 3.1)</span></div>
+      <div class="node llm">3· Translation<br><span class="sub">sr→en · LLM</span></div>
       <div class="arr">→</div>
-      <div class="node trf">4· Sentiment Analysis<br><span class="sub">XLM-RoBERTa</span></div>
+      <div class="node trf">4· Sentiment<br><span class="sub">XLM-RoBERTa</span></div>
       <div class="arr">→</div>
       <div class="node trf">5· Hate Speech<br><span class="sub">XLM-RoBERTa</span></div>
-    </div>
-
-    <!-- Row-break: small corner arrow on the right side -->
-    <div class="row-break">
-      <svg width="18" height="22" viewBox="0 0 18 22">
-        <path d="M 9 0 L 9 14 L 1 14" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <polygon points="-3,11 3,11 0,17" fill="#94a3b8"/>
-      </svg>
-    </div>
-
-    <!-- Row 2: steps 6–10 -->
-    <div class="h-row">
-      <div class="node hybrid">6· ABSA<br><span class="sub">CLASSLA + LLM (default: Llama 3.1)</span></div>
       <div class="arr">→</div>
-      <div class="node stat">7· Extractive Summary<br><span class="sub">TextRank</span></div>
+      <div class="node hybrid">6· ABSA<br><span class="sub">CLASSLA + LLM</span></div>
       <div class="arr">→</div>
-      <div class="node llm">8· Abstractive Summary<br><span class="sub">LLM (default: Llama 3.1)</span></div>
+      <div class="node stat">7· Extractive Sum.<br><span class="sub">TextRank</span></div>
       <div class="arr">→</div>
-      <div class="node stat">9· Keyword Extraction<br><span class="sub">LDA</span></div>
+      <div class="node llm">8· Abstractive Sum.<br><span class="sub">LLM</span></div>
       <div class="arr">→</div>
-      <div class="node hybrid">10· SRL<br><span class="sub">CLASSLA + LLM (default: Llama 3.1)</span></div>
+      <div class="node stat">9· Keywords<br><span class="sub">LDA</span></div>
+      <div class="arr">→</div>
+      <div class="node hybrid">10· SRL<br><span class="sub">CLASSLA + LLM</span></div>
     </div>
   </div>
 
@@ -175,18 +162,18 @@
   <!-- ── Phase 2 ──────────────────────────────────────────────────────── -->
   <div class="phase">
     <div class="phase-label">Phase 2 — Per-word Analysis</div>
-    <div class="h-row">
+    <div class="grid-phase">
       <div class="node classla">Lemmatization<br><span class="sub">CLASSLA</span></div>
       <div class="arr">→</div>
-      <div class="node infra">Dictionary Lookup<br><span class="sub">Wordnet CSV</span></div>
+      <div class="node infra">Dict Lookup<br><span class="sub">Wordnet CSV</span></div>
       <div class="arr">→</div>
-      <div class="node classla">Morphology Tagging<br><span class="sub">CLASSLA · POS / Case / Gender</span></div>
+      <div class="node classla">Morphology<br><span class="sub">CLASSLA</span></div>
       <div class="arr">→</div>
       <div class="node classla">NER<br><span class="sub">CLASSLA</span></div>
       <div class="arr">→</div>
       <div class="node classla">Dependency Parsing<br><span class="sub">CLASSLA</span></div>
       <div class="arr">→</div>
-      <div class="node llm">Lemma Translation<br><span class="sub">LLM (default: Llama 3.1) · batches of 50</span></div>
+      <div class="node llm">Lemma Transl.<br><span class="sub">LLM (Batched)</span></div>
       <div class="arr">→</div>
       <div class="node infra">PONS Links<br><span class="sub">Wordnet CSV</span></div>
     </div>
@@ -194,26 +181,28 @@
 
   <div class="v-arr">↓</div>
 
-  <!-- ── Phase 3 ──────────────────────────────────────────────────────── -->
+  <!-- ── Phase 3 & Output ──────────────────────────────────────────────── -->
   <div class="phase">
-    <div class="phase-label">Phase 3 — Visualizations</div>
-    <div class="h-row">
-      <div class="node viz">Dependency Tree<br><span class="sub">PyVis → Interactive HTML</span></div>
+    <div class="phase-label">Phase 3 — Visuals & Output</div>
+    <div class="grid-phase">
+      <div class="node viz">Dependency Tree<br><span class="sub">PyVis HTML</span></div>
       <div class="arr">→</div>
-      <div class="node viz">Word Cloud<br><span class="sub">WordCloud + Matplotlib → PNG</span></div>
+      <div class="node viz">Word Cloud<br><span class="sub">Matplotlib PNG</span></div>
       <div class="arr">→</div>
-      <div class="node viz">NER Heatmap<br><span class="sub">Matplotlib → PNG</span></div>
+      <div class="node viz">NER Heatmap<br><span class="sub">Matplotlib PNG</span></div>
       <div class="arr">→</div>
-      <div class="node viz">POS Sunburst<br><span class="sub">Matplotlib → PNG</span></div>
+      <div class="node viz">POS Sunburst<br><span class="sub">Matplotlib PNG</span></div>
+      <div class="arr">→</div>
+      <div class="node infra">
+        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Web UI<br><span class="sub">Flask + Jinja2</span>
+      </div>
+      <div class="arr">→</div>
+      <div class="node infra">
+        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/><path d="M12 22v-4a2 2 0 0 1 2-2h8"/><path d="M18 11v4"/><path d="M8 11v4"/><rect x="8" y="15" width="10" height="4" rx="1"/></svg>
+        REST API<br><span class="sub">APIFlask + Swagger</span>
+      </div>
     </div>
-  </div>
-
-  <div class="v-arr">↓</div>
-
-  <!-- Output -->
-  <div class="h-pair">
-    <div class="node infra">🖥️ Web UI<br><span class="sub">Flask + Jinja2 · /compare for side-by-side model comparison</span></div>
-    <div class="node infra">🔌 REST API<br><span class="sub">APIFlask + Swagger UI at /docs</span></div>
   </div>
 
 </div>
