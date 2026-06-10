@@ -2,209 +2,233 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SLAVA Flow Chart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Serbian Language Analyzer — System Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: white;
-      color: #1e293b;
       font-family: 'Segoe UI', system-ui, sans-serif;
-      padding: 1rem;
-      font-weight: bold;
-    }
-
-    h1 { text-align: center; font-size: 2.8rem; color: #0f172a; margin-bottom: 0.5rem; }
-    .subtitle { text-align: center; color: #64748b; font-size: 1.5rem; margin-bottom: 2rem; }
-
-    /* ── Legend ──────────────────────────────────────────────────────────── */
-    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; margin-bottom: 2.5rem; font-size: 1.4rem; }
-    .leg { display: flex; align-items: center; gap: 0.5rem; color: #475569; }
-    .dot { width: 20px; height: 20px; border-radius: 4px; flex-shrink: 0; }
-
-    /* ── Diagram ─────────────────────────────────────────────────────────── */
-    .diagram {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 1600px;
-      margin: 0 auto;
-      gap: 1rem;
-    }
-
-    /* ── Nodes ───────────────────────────────────────────────────────────── */
-    .node {
-      border-radius: 10px;
-      padding: 15px 20px;
-      font-size: 1.5rem;
-      text-align: center;
-      border: 4px solid;
-      line-height: 1.3;
-      flex-shrink: 0;
-      width: 300px;
-      min-height: 130px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      font-weight: bold;
-    }
-    .node .sub { font-size: 1.2rem; opacity: 1; display: block; margin-top: 6px; font-weight: bold; }
-    .node-icon { width: 32px; height: 32px; vertical-align: middle; margin-right: 8px; margin-bottom: 4px; }
-
-    .llm     { background: #f5f3ff; border-color: #7c3aed; color: #5b21b6; }
-    .classla { background: #ecfeff; border-color: #0891b2; color: #155e75; }
-    .trf     { background: #f0fdf4; border-color: #059669; color: #166534; }
-    .stat    { background: #fffbeb; border-color: #d97706; color: #92400e; }
-    .whisper { background: #fef2f2; border-color: #dc2626; color: #991b1b; }
-    .infra   { background: #f1f5f9; border-color: #475569; color: #334155; }
-    .hybrid  { background: #eef2ff; border-color: #6366f1; color: #3730a3; }
-    .viz     { background: #ffffff; border-color: #94a3b8; color: #475569; }
-
-    /* ── Arrows ──────────────────────────────────────────────────────────── */
-    .arr   { color: #94a3b8; font-size: 3rem; font-weight: bold; display: flex; align-items: center; justify-content: center; width: 50px; }
-    .v-arr { color: #94a3b8; font-size: 3rem; font-weight: bold; text-align: center; padding: 15px 0; width: 100%; height: 70px; display: flex; align-items: center; justify-content: center; }
-
-    /* ── Phase containers ────────────────────────────────────────────────── */
-    .phase {
-      background: #ffffff;
-      border: 2px solid #e2e8f0;
-      border-radius: 15px;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
       padding: 2rem;
-      width: fit-content;
-      max-width: 1550px;
-      margin: 0 auto;
     }
-    .phase-label {
-      font-size: 1.8rem;
-      color: #64748b;
+
+    h1 {
       text-align: center;
-      margin-bottom: 2rem;
-      font-weight: bold;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #f8fafc;
+      margin-bottom: 0.4rem;
     }
-    
-    .grid-phase {
+
+    .subtitle {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 2rem;
+    }
+
+    .legend {
       display: flex;
-      flex-wrap: wrap; 
+      flex-wrap: wrap;
       justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .legend-item {
+      display: flex;
       align-items: center;
-      gap: 25px 15px; 
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .diagram-wrapper {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 12px;
+      padding: 2rem;
+      overflow-x: auto;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Mermaid theme overrides */
+    .mermaid svg {
+      max-width: 100%;
     }
   </style>
 </head>
 <body>
 
-<h1>SLAVA Flow Chart</h1>
-<p class="subtitle">Data flow from user input to final JSON output</p>
+  <h1>Serbian Language Analyzer — System Architecture</h1>
+  <p class="subtitle">Data flow from user input to final JSON output</p>
 
-<div class="legend">
-  <div class="leg"><div class="dot" style="background:#7c3aed"></div>LLM (configurable)</div>
-  <div class="leg"><div class="dot" style="background:#0891b2"></div>CLASSLA</div>
-  <div class="leg"><div class="dot" style="background:#059669"></div>Transformer (BERT)</div>
-  <div class="leg"><div class="dot" style="background:#d97706"></div>Statistical</div>
-  <div class="leg"><div class="dot" style="background:#dc2626"></div>Whisper</div>
-  <div class="leg"><div class="dot" style="background:#475569"></div>Infrastructure</div>
-</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div> Llama 3.1 (LLM)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0891b2"></div> CLASSLA (NLP Pipeline)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#059669"></div> Transformer Model</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div> Statistical / Classical</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div> Whisper (ASR)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#475569"></div> I/O / Infrastructure</div>
+  </div>
 
-<div class="diagram">
+  <div class="diagram-wrapper">
+    <div class="mermaid">
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor":        "#1e2130",
+    "primaryTextColor":    "#e2e8f0",
+    "primaryBorderColor":  "#3d4460",
+    "lineColor":           "#64748b",
+    "secondaryColor":      "#252a3d",
+    "tertiaryColor":       "#1a1f30",
+    "background":          "#0f1117",
+    "mainBkg":             "#1e2130",
+    "nodeBorder":          "#3d4460",
+    "clusterBkg":          "#181c2a",
+    "clusterBorder":       "#2d3348",
+    "titleColor":          "#f1f5f9",
+    "edgeLabelBackground": "#252a3d",
+    "fontFamily":          "Segoe UI, system-ui, sans-serif"
+  }
+}}%%
 
-  <!-- Input Header -->
-  <div class="grid-phase">
-    <div class="node infra">
-      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-      Text Input<br><span class="sub">Latin or Cyrillic</span>
-    </div>
-    <div class="arr">→</div>
-    <div class="node whisper">
-      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-      Audio → Whisper<br><span class="sub">WAV/MP3 · medium</span>
-    </div>
-    <div class="arr">→</div>
-    <div class="node infra">Validation & String<br><span class="sub">max 15k chars</span></div>
-    <div class="arr">→</div>
-    <div class="node infra">
-      <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></circle></svg>
-      Async Job Queue<br><span class="sub">ThreadPoolExecutor</span>
+flowchart TD
+
+    %% ── Input ────────────────────────────────────────────────────────────────
+    subgraph INPUT["  INPUT  "]
+        direction LR
+        TXT["📝 Text\n(Latin / Cyrillic)"]
+        AUD["🎤 Audio File\n(WAV / WebM / MP3)"]
+    end
+
+    %% ── Transcription ────────────────────────────────────────────────────────
+    AUD --> WHISPER["🎙️ Whisper\nmodel: medium / large\nSpeech → Serbian text"]
+    WHISPER --> RAW
+    TXT --> RAW["Serbian Text String"]
+
+    %% ── Validation & Queue ───────────────────────────────────────────────────
+    RAW --> VAL["✔ Validation\n≤ 15,000 characters"]
+    VAL --> QUEUE["⚙️ Async Job Queue\nThreadPoolExecutor · max 2 workers\nReturns job_id immediately"]
+
+    %% ── Phase 1 ──────────────────────────────────────────────────────────────
+    subgraph PH1["  PHASE 1 — Document-level Analysis  "]
+        direction LR
+
+        subgraph LLM1["  Llama 3.1  "]
+            direction TB
+            GRAM["Grammar Correction\n(Ollama / vLLM)"]
+            FTRANS["Full-sentence\nTranslation sr→en"]
+            ASUM["Abstractive\nSummarization"]
+        end
+
+        subgraph CLS1["  CLASSLA  "]
+            direction TB
+            TOK["Tokenization"]
+        end
+
+        subgraph TRF["  Transformer Models  "]
+            direction TB
+            SENT["Sentiment Analysis\nXLM-RoBERTa\n(cardiffnlp)"]
+            HATE["Hate Speech Detection\nXLM-RoBERTa\n(multilingual)"]
+        end
+
+        subgraph STAT["  Statistical  "]
+            direction TB
+            ESUM["Extractive Summary\nTextRank + TF-IDF"]
+            LDA["Topic Modelling\nLDA · sklearn"]
+        end
+
+        subgraph HYBRID["  CLASSLA + Llama 3.1  "]
+            direction TB
+            ABSA["ABSA\nAspect-Based Sentiment"]
+            SRL["Semantic Role Labeling\nPredicate-Argument Frames"]
+        end
+    end
+
+    %% ── Phase 2 ──────────────────────────────────────────────────────────────
+    subgraph PH2["  PHASE 2 — Per-word Analysis  "]
+        direction LR
+
+        subgraph CLS2["  CLASSLA  "]
+            direction TB
+            LEM["Lemmatization"]
+            MORPH["Morphology Tagging\nPOS · Case · Gender\nNumber · Person"]
+            NER["Named Entity Recognition"]
+            DEP["Dependency Parsing\nhead · deprel"]
+        end
+
+        subgraph LLM2["  Llama 3.1  "]
+            direction TB
+            WDTR["Per-lemma Translation\nBatches of 50 · sr→en"]
+        end
+
+        subgraph LOCAL["  Local Data  "]
+            direction TB
+            DICT["Serbian Wordnet CSV\nDefinitions lookup"]
+            LINKS["PONS Dictionary\nURL generation"]
+        end
+    end
+
+    %% ── Phase 3 ──────────────────────────────────────────────────────────────
+    subgraph PH3["  PHASE 3 — Visualizations  "]
+        direction LR
+        DEPTREE["🕸️ Dependency Tree\nPyVis → Interactive HTML"]
+        WC["☁️ Word Cloud\nWordCloud + Matplotlib\nBase64 PNG"]
+        HMAP["🔥 NER Heatmap\nMatplotlib\nBase64 PNG"]
+        SUN["🍩 POS Sunburst\nMatplotlib\nBase64 PNG"]
+    end
+
+    %% ── Output ───────────────────────────────────────────────────────────────
+    subgraph OUT["  OUTPUT  "]
+        direction LR
+        WEBUI["🖥️ Web UI\nFlask + Jinja2\nServer-side rendered"]
+        API["🔌 REST API\nAPIFlask Blueprint\nSwagger UI at /docs"]
+    end
+
+    %% ── Flow ─────────────────────────────────────────────────────────────────
+    QUEUE --> PH1
+    PH1   --> PH2
+    PH2   --> PH3
+    PH3   --> OUT
+
+    %% ── Styling ──────────────────────────────────────────────────────────────
+    classDef llm      fill:#3b1f6e,stroke:#7c3aed,color:#e9d5ff
+    classDef classla  fill:#0c3547,stroke:#0891b2,color:#bae6fd
+    classDef trf      fill:#064e3b,stroke:#059669,color:#a7f3d0
+    classDef stat     fill:#451a03,stroke:#d97706,color:#fde68a
+    classDef whisper  fill:#450a0a,stroke:#dc2626,color:#fecaca
+    classDef infra    fill:#1e293b,stroke:#475569,color:#cbd5e1
+    classDef hybrid   fill:#1e1b4b,stroke:#6366f1,color:#c7d2fe
+    classDef output   fill:#0f172a,stroke:#334155,color:#e2e8f0
+
+    class GRAM,FTRANS,ASUM,WDTR llm
+    class TOK,LEM,MORPH,NER,DEP classla
+    class SENT,HATE trf
+    class ESUM,LDA stat
+    class WHISPER whisper
+    class VAL,QUEUE,RAW,DICT,LINKS infra
+    class ABSA,SRL hybrid
+    class DEPTREE,WC,HMAP,SUN,WEBUI,API output
     </div>
   </div>
 
-  <div class="v-arr">↓</div>
-
-  <!-- ── Phase 1 ──────────────────────────────────────────────────────── -->
-  <div class="phase">
-    <div class="phase-label">Phase 1 — Document-level Analysis</div>
-    <div class="grid-phase">
-      <div class="node llm">1· Grammar<br><span class="sub">LLM</span></div>
-      <div class="arr">→</div>
-      <div class="node classla">2· Tokenization<br><span class="sub">CLASSLA</span></div>
-      <div class="arr">→</div>
-      <div class="node llm">3· Translation<br><span class="sub">sr→en · LLM</span></div>
-      <div class="arr">→</div>
-      <div class="node trf">4· Sentiment<br><span class="sub">XLM-RoBERTa</span></div>
-      <div class="arr">→</div>
-      <div class="node trf">5· Hate Speech<br><span class="sub">XLM-RoBERTa</span></div>
-      <div class="arr">→</div>
-      <div class="node hybrid">6· ABSA<br><span class="sub">CLASSLA + LLM</span></div>
-      <div class="arr">→</div>
-      <div class="node stat">7· Extractive Sum.<br><span class="sub">TextRank</span></div>
-      <div class="arr">→</div>
-      <div class="node llm">8· Abstractive Sum.<br><span class="sub">LLM</span></div>
-      <div class="arr">→</div>
-      <div class="node stat">9· Keywords<br><span class="sub">LDA</span></div>
-      <div class="arr">→</div>
-      <div class="node hybrid">10· SRL<br><span class="sub">CLASSLA + LLM</span></div>
-    </div>
-  </div>
-
-  <div class="v-arr">↓</div>
-
-  <!-- ── Phase 2 ──────────────────────────────────────────────────────── -->
-  <div class="phase">
-    <div class="phase-label">Phase 2 — Per-word Analysis</div>
-    <div class="grid-phase">
-      <div class="node classla">Lemmatization<br><span class="sub">CLASSLA</span></div>
-      <div class="arr">→</div>
-      <div class="node infra">Dict Lookup<br><span class="sub">Wordnet CSV</span></div>
-      <div class="arr">→</div>
-      <div class="node classla">Morphology<br><span class="sub">CLASSLA</span></div>
-      <div class="arr">→</div>
-      <div class="node classla">NER<br><span class="sub">CLASSLA</span></div>
-      <div class="arr">→</div>
-      <div class="node classla">Dependency Parsing<br><span class="sub">CLASSLA</span></div>
-      <div class="arr">→</div>
-      <div class="node llm">Lemma Transl.<br><span class="sub">LLM (Batched)</span></div>
-      <div class="arr">→</div>
-      <div class="node infra">PONS Links<br><span class="sub">Wordnet CSV</span></div>
-    </div>
-  </div>
-
-  <div class="v-arr">↓</div>
-
-  <!-- ── Phase 3 & Output ──────────────────────────────────────────────── -->
-  <div class="phase">
-    <div class="phase-label">Phase 3 — Visuals & Output</div>
-    <div class="grid-phase">
-      <div class="node viz">Dependency Tree<br><span class="sub">PyVis HTML</span></div>
-      <div class="arr">→</div>
-      <div class="node viz">Word Cloud<br><span class="sub">Matplotlib PNG</span></div>
-      <div class="arr">→</div>
-      <div class="node viz">NER Heatmap<br><span class="sub">Matplotlib PNG</span></div>
-      <div class="arr">→</div>
-      <div class="node viz">POS Sunburst<br><span class="sub">Matplotlib PNG</span></div>
-      <div class="arr">→</div>
-      <div class="node infra">
-        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Web UI<br><span class="sub">Flask + Jinja2</span>
-      </div>
-      <div class="arr">→</div>
-      <div class="node infra">
-        <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/><path d="M12 22v-4a2 2 0 0 1 2-2h8"/><path d="M18 11v4"/><path d="M8 11v4"/><rect x="8" y="15" width="10" height="4" rx="1"/></svg>
-        REST API<br><span class="sub">APIFlask + Swagger</span>
-      </div>
-    </div>
-  </div>
-
-</div>
 </body>
 </html>

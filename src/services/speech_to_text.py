@@ -33,7 +33,7 @@ class VoiceTranscriber:
         with self._lock:
             self._model = model
             self._loaded_size = model_size
-        print(f"Whisper '{model_size}' ready. ✅")
+        print(f"Whisper '{model_size}' ready.")
 
     def transcribe_audio_file(self, audio_path: str) -> str:
         if not os.path.exists(audio_path):
