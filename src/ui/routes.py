@@ -169,6 +169,8 @@ def api_save_settings():
         for k in ("base_url", "model", "api_key"):
             if k in data["remote"]:
                 cfg["remote"][k] = str(data["remote"][k]).strip()
+    if data.get("sentiment_engine") in ("classifier", "llm"):
+        cfg["sentiment_engine"] = data["sentiment_engine"]
     new_whisper = str(data.get("whisper_model", "")).strip()
     if new_whisper in WHISPER_MODELS:
         cfg["whisper_model"] = new_whisper

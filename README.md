@@ -110,6 +110,8 @@ The active model and backend (local Ollama vs. remote vLLM) can be changed at ru
 | Sentiment analysis | `cardiffnlp/twitter-xlm-roberta-base-sentiment` |
 | Hate speech detection | `sadjava/multilingual-hate-speech-xlm-roberta` |
 
+> **Sentiment engine** defaults to the cardiffnlp classifier above, but can be switched to the selected LLM backend (local Ollama or remote) in the **Settings** modal.
+
 ### Other
 | Task | Model |
 |---|---|

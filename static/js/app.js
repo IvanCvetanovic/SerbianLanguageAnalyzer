@@ -700,6 +700,8 @@ const localModelRefresh   = document.getElementById('local-model-refresh');
 const remoteFields        = document.getElementById('remote-fields');
 const modeLocal           = document.getElementById('mode-local');
 const modeRemote          = document.getElementById('mode-remote');
+const sentimentClassifier = document.getElementById('sentiment-engine-classifier');
+const sentimentLlm        = document.getElementById('sentiment-engine-llm');
 const remoteUrl           = document.getElementById('remote-url');
 const remoteModel         = document.getElementById('remote-model');
 const remoteKey           = document.getElementById('remote-key');
@@ -791,6 +793,7 @@ function openSettings() {
         remoteModel.value = cfg.remote.model    || '';
         remoteKey.value   = cfg.remote.api_key  || '';
       }
+      (cfg.sentiment_engine === 'llm' ? sentimentLlm : sentimentClassifier).checked = true;
       if (cfg.whisper_model) whisperModelSelect.value = cfg.whisper_model;
       fetch('/api/whisper-status').then(r => r.json()).then(state => {
         showWhisperStatus(state);
@@ -821,6 +824,7 @@ settingsSave.addEventListener('click', () => {
       api_key:  remoteKey.value.trim(),
     },
     whisper_model: whisperModelSelect.value.trim(),
+    sentiment_engine: sentimentLlm.checked ? 'llm' : 'classifier',
   };
   settingsSave.disabled = true;
   fetch('/api/settings', {

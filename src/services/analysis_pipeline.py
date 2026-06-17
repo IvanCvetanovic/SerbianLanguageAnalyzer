@@ -3,6 +3,7 @@ from collections import Counter
 
 from src.services.local_translator import LocalSrToEnTranslator
 from src.services.sentiment_analyzer import SerbianSentimentAnalyzer
+from src.services import llm_sentiment
 from src.services.summarizer import extractive_summary, abstractive_summary
 from src.services.topic_modeller import get_topics
 from src.services.word_controller import WordController
@@ -14,7 +15,7 @@ from src.services.absa_analyzer import SerbianABSA, enrich_absa_with_translation
 from src.services.srl_extractor import SerbianSRLExtractor
 from src.services.speech_to_text import VoiceTranscriber
 from src.core.pipeline import get_nlp
-from src.core.model_config import set_config_override
+from src.core.model_config import set_config_override, get_config
 
 _log = logging.getLogger(__name__)
 
@@ -29,6 +30,13 @@ sentiment_analyzer = SerbianSentimentAnalyzer()
 absa_analyzer      = SerbianABSA()
 srl_extractor      = SerbianSRLExtractor(pipeline=get_nlp())
 transcriber        = VoiceTranscriber()
+
+
+def analyze_sentiment(text):
+    """Sentiment via the user-selected engine: dedicated XLM classifier (default) or LLM backend."""
+    if get_config().get("sentiment_engine") == "llm":
+        return llm_sentiment.analyze_llm(text)
+    return sentiment_analyzer.analyze(text, mode="sentences", aggregation="mean", max_length=256)
 
 
 def _report(progress: dict, job_id: str, pct: int, stage: str):
@@ -118,12 +126,7 @@ def _run_analysis_inner(input_text, features, job_id: str, progress: dict):
         if "sentiment" in features:
             _report(progress, job_id, 20, "Sentiment analysis")
             try:
-                analysis = sentiment_analyzer.analyze(
-                    input_text,
-                    mode="sentences",
-                    aggregation="mean",
-                    max_length=256,
-                )
+                analysis = analyze_sentiment(input_text)
                 result["sentiment"] = {
                     "label": analysis.overall.label,
                     "confidence": analysis.overall.confidence,

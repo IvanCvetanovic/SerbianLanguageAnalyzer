@@ -16,6 +16,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 
 _DEFAULTS: dict = {
     "mode": "local",
+    "sentiment_engine": "classifier",
     "whisper_model": "medium",
     "local": {
         "model": "llama3.1:8b",

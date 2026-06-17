@@ -11,6 +11,7 @@ from src.infrastructure.task_service import task_service
 from src.core.model_config import get_config
 from src.services.analysis_pipeline import (
     run_analysis,
+    analyze_sentiment,
     sentiment_analyzer,
     absa_analyzer,
     srl_extractor,
@@ -107,7 +108,7 @@ def get_job(job_id):
 )
 def api_sentiment(body):
     text     = body['text']
-    analysis = sentiment_analyzer.analyze(text, mode='sentences', aggregation='mean', max_length=256)
+    analysis = analyze_sentiment(text)
     sents    = sentiment_analyzer.split_sentences(text)
     return {
         'overall': {
