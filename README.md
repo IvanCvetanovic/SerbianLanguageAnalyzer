@@ -3,8 +3,9 @@
 A web application built as a Master's thesis at the University of Vienna. It applies a full suite of NLP techniques to Serbian-language text and presents the results progressively in the browser as each analysis step completes. The same pipeline is also exposed as a documented REST API.
 
 <p align="center">
-  <img src="docs/screenshots/00-results-overview.png" alt="Analysis results overview" width="90%">
+  <img src="docs/screenshots/progressive-analysis.gif" alt="Live progressive analysis: each section fills in as its step completes" width="90%">
 </p>
+<p align="center"><sub><i>Live run — each section replaces its spinner the moment its analysis finishes (recording sped up).</i></sub></p>
 
 ---
 
@@ -37,7 +38,27 @@ Results load progressively — each section appears as soon as its analysis fini
 
 ---
 
+## Architecture
+
+End-to-end data flow from input (text or speech) through the three analysis phases to the rendered UI and REST API. Colors map to the engine behind each step — Llama 3.1, CLASSLA, a transformer model, a classical/statistical method, or Whisper.
+
+<p align="center">
+  <img src="docs/screenshots/01-architecture.png" alt="System architecture: data flow from text/audio input through the analysis pipeline to the Web UI and REST API" width="62%">
+</p>
+
+<sub><i>Diagram generated from <a href="flow_chart.html"><code>flow_chart.html</code></a> — edit that file and re-render to update.</i></sub>
+
+---
+
 ## Screenshots
+
+### Full results view
+
+The complete analysis for a sample sentence, rendered in the browser.
+
+<p align="center">
+  <img src="docs/screenshots/00-results-overview.png" alt="Full analysis results overview" width="90%">
+</p>
 
 ### Grammar correction with interactive diff
 
